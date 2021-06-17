@@ -204,6 +204,7 @@ const pollOneMMS = async () => {
     from: fromUnix(last),
     to: fromUnix(now)
   });
+  console.log(response);
   const { sms } = response;
   if (sms) await sms.reduce(async (r, v) => {
     await r;

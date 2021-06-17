@@ -3,7 +3,6 @@
 
 const infura = new (require('ipfs-deploy/src/pinners/infura'))();
 const redis = new (require('ioredis'))();
-const { fromStream, map } = require('streaming-iterables');
 
 const https = require('https');
 const fs = require('fs');
@@ -12,15 +11,6 @@ const express = require('express');
 const app = express();
 const jwt = require('express-jwt');
 
-const toIterable = async function *(stream) {
-  const it = {};
-	/*
-  const length = Number(stream.headers['Content-Length'] || stream.headers['content-length'] || stream.headers['Content-length']);
-  let consumed = 0;
-  stream.on('data', (v) => { consumed += v.length; if (consumed >= length) stream.emit('end'); }); 
-  */
-  return map((v) => Array.from(v))(fromStream(stream));
-};
 
 app.put('/upload/:slot/:filename', jwt({ algorithms: [ 'HS256' ], secret: process.env.HTTP_FILE_SHARE_SECRET }), (req, res) => {
   (async () => {
@@ -30,11 +20,12 @@ app.put('/upload/:slot/:filename', jwt({ algorithms: [ 'HS256' ], secret: proces
 	    console.log(JSON.stringify(result));
       console.log('uploaded ' + result.cid);
       await redis.set(req.params.slot, result.cid);
+      res.sendStatus(201);
       res.end();
     } catch (e) {
       console.error(e);
-      res.status = 500;
-      res.end()
+      res.sendStatus(500);
+      res.end();
     }
   })();
 });
