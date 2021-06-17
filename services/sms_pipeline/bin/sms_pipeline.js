@@ -207,7 +207,7 @@ const pollOneMMS = async () => {
   const { sms } = response;
   if (sms) await sms.reduce(async (r, v) => {
     await r;
-    const attachments = (await getAttachmentsEventually(v.id)).filter(Boolean);
+    const attachments = [ v.col_media1, v.col_media2, v.col_media3 ].filter(Boolean); //(await getAttachmentsEventually(v.id)).filter(Boolean);
     const msg = {
       from: v.contact,
       to: v.did,
