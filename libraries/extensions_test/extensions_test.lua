@@ -1,22 +1,18 @@
 dofile("/etc/asterisk/extensions.lua");
 
-local channel_class = {};
-channel_class.mt = {
+_G.Channel = {};
+Channel.prototype = {
   __newindex = function (self, k, v)
-    self._vars[k] = v;
+    rawget(self, '_vars')[k] = v;
   end,
   __index = function (self, k)
     local _self = self;
-    return { get = function (self, k) return _self._vars[k]; end };
+    return { get = function (self) return rawget(_self, '_vars')[k]; end };
   end
-}
+};
 
-setmetatable(channel_class, { __index = channel_class });
-
-function channel_class:new(o)
+function Channel.new(o)
   local instance = {};
-  setmetatable(instance, channel_class.mt);
-  instance.mt = channel_class.mt;
   instance._vars = {
     ['CALLLERID(num)'] = o['CALLERID(num)'] or '7576362081',
     ['CALLERID(name)'] = o['CALLERID(name)'] or 'flex',
@@ -24,6 +20,8 @@ function channel_class:new(o)
     ['SIPDOMAIN'] = o['SIPDOMAIN'] or 'stomp.dynv6.net',
     ['CALLERID(all)'] = o['CALLERID(all)'] or '"flex" <555>'
   };
+  instance.mt = Channel.prototype;
+  setmetatable(instance, Channel.prototype);
   return instance;
 end
 
@@ -45,15 +43,15 @@ function extension_digit_to_pattern(digit)
     return '[1-9]';
   end
   if digit == '.' then
-    return '.*$';
+    return '.*';
   end
   return digit;
 end
 
 function extension_to_pattern(extension)
   local pattern = '';
-  if extension[0] == '_' then
-    for c in extension:sub(1):gmatch('.') do
+  if extension:sub(1, 1) == '_' then
+    for c in extension:sub(2):gmatch('.') do
       pattern = pattern .. extension_digit_to_pattern(c);
     end
   end
@@ -62,15 +60,16 @@ end
 
 function sort_extensions(group)
   local retval = { match = {}, explicit = {} };
-  for k, v in ipairs(group) do
+  for k, v in pairs(group) do
     if k == 'i' then
       retval.invalid = v;
-    elseif k[0] == '_' then
+    elseif k:sub(1, 1) == '_' then
       retval.match[k] = v;
     else
       retval.explicit[k] = v;
     end
   end
+  return retval;
 end
 
 function no_match(context, extension)
@@ -78,6 +77,7 @@ function no_match(context, extension)
       channel.NO_MATCH = { context, extension };
     end
 end
+local json = require 'json';
 
 function match_handler(context, extension)
   local group = extensions[context];
@@ -85,7 +85,8 @@ function match_handler(context, extension)
   local sorted = sort_extensions(group);
   if sorted.explicit[extension] then return sorted.explicit[extension]; end
   for k, v in ipairs(sorted.match) do
-    if extension:find(extension_to_pattern(k)) then
+    if extension:find('^' .. extension_to_pattern(k)) then
+	    print(v);
       return v
     end
   end
@@ -97,9 +98,10 @@ end
 _G.app = {
   dial = function (...)
     handle_app_call('dial', ...);
-    channel._vars.DIALSTATUS = next_dialstatus;
+    channel.DIALSTATUS = next_dialstatus;
   end,
   ["goto"] = function (context, extension)
+	  print(extension);
     local handler = match_handler(context, extension);
     return handler(context, extension);
   end,
@@ -116,8 +118,8 @@ setmetatable(_G.app, {
   end
 });
 
-function test_dial(context, extension, o)
-  _G.channel = channel_class:new(o);
+function mock_dial(context, extension, o)
+  _G.channel = Channel.new(o);
   app["goto"](context, extension);
   return _G.channel;
 end

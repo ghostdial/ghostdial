@@ -114,6 +114,9 @@ const pduHandler = (session, handleSms) => (pdu) => {
 };
 
 const smppHandler = (handleSms) => (session) => {
+  session.on('error', (e) => {
+    console.error(e);
+  });
   session.on("bind_transceiver", (pdu) => {
     if (!checkUserPass(pdu)) {
       session.send(

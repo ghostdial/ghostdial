@@ -13,7 +13,8 @@
   "dependencies": {
     "express": "^4.17.1",
     "express-jwt": "^6.0.0",
-    "ipfs-deploy": "^10.1.0"
+    "ipfs-deploy": "^10.1.0",
+    "morgan": "^1.10.0"
   },
   "devDependencies": {
     "cross-env": "^7.0.3"
