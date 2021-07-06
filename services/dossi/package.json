@@ -1,0 +1,21 @@
+{
+  "name": "dossi",
+  "version": "0.1.0",
+  "description": "intelligence bot used to build dossiers",
+  "main": "index.js",
+  "repository": "https://github.com/ghostdial/ghostdial",
+  "author": "Ghostdial LLC",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "start": "cross-env node bin/dossi"
+  },
+  "dependencies": {
+    "@xmpp/client": "^0.12.0",
+    "twilio": "^3.65.0"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "nice-repl": "^0.1.2"
+  }
+}
