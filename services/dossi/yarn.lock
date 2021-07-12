@@ -1620,6 +1620,11 @@ ltx@^2.10.0:
   dependencies:
     inherits "^2.0.4"
 
+lua.vm.js@^0.0.1:
+  version "0.0.1"
+  resolved "https://registry.yarnpkg.com/lua.vm.js/-/lua.vm.js-0.0.1.tgz#aa2b9696b9043f17af9828d4aeacd6d9bc2569c7"
+  integrity sha1-qiuWlrkEPxevmCjUrqzW2bwlacc=
+
 magic-string@^0.19.0:
   version "0.19.1"
   resolved "https://registry.yarnpkg.com/magic-string/-/magic-string-0.19.1.tgz#14d768013caf2ec8fdea16a49af82fc377e75201"

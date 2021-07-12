@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@xmpp/client": "^0.12.0",
+    "lua.vm.js": "^0.0.1",
     "twilio": "^3.65.0"
   },
   "devDependencies": {

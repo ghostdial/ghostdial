@@ -83,6 +83,53 @@ const deleteNullKeys = (o) => {
   return result;
 };
 
+const redis = new (require('ioredis'))();
+
+const timeout = (n) => new Promise((resolve) => setTimeout(resolve, n));
+const POLL_INTERVAL = 500;
+
+const toJid = ({ host, username }) => {
+  return username + '@' + host;
+};
+const pullIncomingCalls = () => {
+  (async () => {
+    while (true) {
+      try {
+        const incomingRaw = await redis.lpop('calls-in');
+        if (!incomingRaw) {
+          await timeout(POLL_INTERVAL);
+          continue;
+        } else {
+          const incoming = JSON.parse(incomingRaw);
+          const jid = toJid({ host: process.env.DOMAIN, username: incoming.did });
+          send('INCOMING:<' + incoming.from + '=>' + incoming.did + '>', jid);  
+          await printDossier(incoming.from, jid);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      await timeout(POLL_INTERVAL);
+    }
+  })().catch((err) => console.error(err));
+};
+const printDossier = async (body, to) => {
+  if (/(?:^\d{10,11}$)/.test(body)) {
+    if (body.length === 11) body = body.substr(1);
+    body = '+1' + body;
+    const twilioResults = await twilioLookup(body);
+    const peopleDataLabsResults = deleteNullKeys(await peopledatalabs.personEnrich({ phone: body }));
+    send(JSON.stringify({ twilioResults, peopleDataLabsResults }, null, 2), to);
+    send('good luck ghost', to);
+  } else if (body.match(/\w+/g).length === 3) {
+    const [ first_name, last_name, region ] = body.match(/\w+/g);
+    send(JSON.stringify(await personEnrich(first_name, last_name, region), null, 2), to);
+    talkGhastly(to);
+  } else if (body.match(/^(?:SELECT|next)/g)) {
+    await personSearch(to, body);
+    talkGhastly(to);
+  }
+};
+
 (async () => {
   xmpp.on('online', () => {
     console.log('online!');
@@ -95,21 +142,8 @@ const deleteNullKeys = (o) => {
     if (!stanza.getChild('body')) return;
     const to = stanza.attrs.from;
     let body = stanza.getChild('body').children[0].trim();
-    if (/(?:^\d{10,11}$)/.test(body)) {
-      if (body.length === 11) body = body.substr(1);
-      body = '+1' + body;
-      const twilioResults = await twilioLookup(body);
-      const peopleDataLabsResults = deleteNullKeys(await peopledatalabs.personEnrich({ phone: body }));
-      send(JSON.stringify({ twilioResults, peopleDataLabsResults }, null, 2), to);
-      send('good luck ghost', to);
-    } else if (body.match(/\w+/g).length === 3) {
-      const [ first_name, last_name, region ] = body.match(/\w+/g);
-      send(JSON.stringify(await personEnrich(first_name, last_name, region), null, 2), to);
-      talkGhastly(to);
-    } else if (body.match(/^(?:SELECT|next)/g)) {
-      await personSearch(to, body);
-      talkGhastly(to);
-    }
+    await printDossier(body, to);
   });
   await xmpp.start();
+  pullIncomingCalls();
 })().catch((err) => console.error(err));
