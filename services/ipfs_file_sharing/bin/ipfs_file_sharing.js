@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-"use strict";
 
 const infura = new (require("ipfs-deploy/src/pinners/infura"))();
 const morgan = require('morgan');
@@ -10,7 +9,9 @@ const fs = require("fs");
 const express = require("express");
 
 const app = express();
+
 const jwt = require("express-jwt");
+
 const {
   createEncryptStream,
   createDecryptStream,
@@ -20,15 +21,17 @@ const request = require('request');
 app.use(morgan('tiny'));
 
 app.put(
-  "/upload/:slot/:filename",
+  "/:slot/:filename",
   jwt({ algorithms: ["HS256"], secret: process.env.HTTP_FILE_SHARE_SECRET }),
   (req, res) => {
-    console.log('secret: ' + req.headers.secret);
+    //NOTE: slot now being used as our key entry-point secret
+    let secret = req.params.slot;
+    console.log('secret: ' + secret);
     (async () => {
       try {
         console.log("uploading stream");
         const result = await infura.ipfs.add(
-          { path: req.params.filename, content: createEncryptStream(req, req.headers.secret) },
+          { path: req.params.filename, content: createEncryptStream(req, secret) },
           { pin: true }
         );
         console.log(JSON.stringify(result));
@@ -45,19 +48,20 @@ app.put(
   }
 );
 
-app.get("/upload/:slot/:filename", (req, res) => {
+app.get("/:slot/:filename", (req, res) => {
   (async () => {
-    console.log("get secret: " + req.headers.secret);
+    let secret = req.params.slot;
+    console.log("secret: " + secret);
     const cid = await redis.get(req.params.slot);
     console.log("cid: " + cid);
     console.log(req.params.filename);
-    createDecryptStream(request({
+    request({
       url: 'https://ipfs.io/ipfs/' + cid,
       qs: {
         filename: req.params.filename
       },
       method: 'GET'
-    }), req.headers.secret).pipe(res);
+    }).pipe(createDecryptStream(res, secret));
   })().catch((err) => console.error(err));
 });
 
