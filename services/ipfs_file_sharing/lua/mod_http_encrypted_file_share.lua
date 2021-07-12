@@ -174,7 +174,7 @@ function handle_slot_request(event)
 	local filesize = tonumber(request.attr.size);
 	local filetype = request.attr["content-type"] or "application/octet-stream";
 	local uploader = jid.bare(stanza.attr.from);
-
+	
 	local may, why_not = may_upload(uploader, filename, filesize, filetype);
 	if not may then
 		origin.send(st.error_reply(stanza, why_not));
@@ -197,16 +197,18 @@ function handle_slot_request(event)
 	local authz = get_authz(slot, uploader, filename, filesize, filetype);
 	local slot_url = get_url(slot, filename);
 	local upload_url = slot_url;
-  local secret = generate();
 
+	-- Creating the proper 'reply' stanza
 	local reply = st.reply(stanza)
 		:tag("slot", { xmlns = namespace })
-			:tag("get", { url = slot_url })
-        :text_tag('header', secret, { name = "secret" }):up():up()
-			:tag("put", { url = upload_url })
-        :text_tag('header', secret, { name = "secret" }):up()
-				:text_tag("header", "Bearer "..authz, {name="Authorization"})
+			:tag("put", { url = slot_url })
+				:text_tag("header", "Bearer "..authz, {name="Authorization"}):up()
+			:tag("get", { url = upload_url })
 		:reset();
+
+	-- Logs for viewing reply stanza. May be removed
+	module:log("info", "reply stanza");
+	module:log("info", tostring(reply));
 
 	origin.send(reply);
 	return true;
@@ -485,7 +487,13 @@ function check_files(query)
 	return next(issues) == nil, issues;
 end
 
+-- (Q): Is this what hooks the function to... whatever this string represents?
+-- It seems like there's just some global `module` object...
+-- https://prosody.im/doc/developers/events
 module:hook("iq-get/host/urn:xmpp:http:upload:0:request", handle_slot_request);
+module:hook("server-started", function(event) 
+	module:log("info", "SORVAR START");
+end);
 
 if not external_base_url then
 module:provides("http", {

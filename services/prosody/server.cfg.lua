@@ -14,5 +14,8 @@ VirtualHost "stomp.dynv6.net"
 
 
 --Component "sms.stomp.dynv6.net" "sms"
-
-Component "upload.stomp.dynv6.net" "http_file_share"
+--
+Component "upload.stomp.dynv6.net" "http_encrypted_file_share"
+-- See: https://prosody.im/doc/modules/mod_http_file_share#external
+http_encrypted_file_share_secret = "replace-with-secret-or-os.getenv()"
+http_encrypted_file_share_base_url = "https://stomp.dynv6.net:8443/"
