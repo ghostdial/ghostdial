@@ -1,0 +1,20 @@
+{
+  "name": "sms_webhook",
+  "version": "0.1.0",
+  "description": "sms webhook",
+  "main": "index.js",
+  "scripts": {
+    "start": "cross-env node bin/sms_webhook"
+  },
+  "repository": "https://github.com/ghostdial/ghostdial",
+  "author": "Ghostdial LLC",
+  "license": "MIT",
+  "private": false,
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3"
+  }
+}

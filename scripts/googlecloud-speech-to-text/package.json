@@ -1,0 +1,13 @@
+{
+  "name": "googlecloud-speech-to-text",
+  "version": "0.2.0",
+  "description": "speech to text",
+  "main": "index.js",
+  "license": "MIT",
+  "private": false,
+  "dependencies": {
+    "fs-extra": "^10.0.0",
+    "ioredis": "^4.27.6",
+    "yargs": "^17.0.1"
+  }
+}

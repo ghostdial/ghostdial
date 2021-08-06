@@ -12,7 +12,17 @@ const ethers = require('ethers');
 const client = new TextToSpeechClient();
 const fs = require('fs');
 
+const PREFIX = '/var/lib/asterisk/sounds/en';
+
+const path = require('path');
+
+const toTranscriptFilename = (filename) => {
+  return filename.replace(/[^\w]/g, '-').toLowerCase().substr(0, 64);
+};
+
 const synthesize = async () => {
+  const filename = toTranscriptFilename(argv._[0]) + '.wav';
+  if (fs.existsSync(path.join(PREFIX, filename))) return console.log(filename);
   const request = {
     input: { text: argv._[0], },
     voice: {
@@ -20,12 +30,12 @@ const synthesize = async () => {
       ssmlGender: 'NEUTRAL',
     },
     audioConfig: {
-      audioEncoding: 'LINEAR16'
+      audioEncoding: 'LINEAR16',
+      sampleRateHertz: 8000
     }
   };
   const [ audio ] = await client.synthesizeSpeech(request);
-  const filename = ethers.utils.solidityKeccak256(['string'], [ argv._[0] ]).substr(2) + '.wav';
-  fs.writeFileSync('/usr/share/asterisk/sounds/' + filename, audio);
+  fs.writeFileSync(path.join(PREFIX, filename), audio.audioContent);
   console.log(filename);
   process.exit(0);
 };

@@ -3,7 +3,6 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = 0;
 
 const url = require('url');
 const lodash = require('lodash');
-const { SpeechClient } = require('@google-cloud/speech');
 const fs = require('fs');
 const debug = require('@xmpp/debug');
 const path = require('path');
@@ -12,13 +11,9 @@ const { client, xml } = require('@xmpp/client');
 
 const voicemailDirectory = process.env.VOICEMAIL_DIRECTORY || '/var/spool/asterisk/voicemail/default';
 
-const speech = new SpeechClient();
 const yargs = require('yargs');
 const filename = yargs.argv._[0];
 const bucketName = (process.env.DOMAIN || 'ghostdial.net').replace(/\./g, '-') + '-voicemail';
-const { Storage } = require('@google-cloud/storage');
-
-const storage = new Storage();
 
 const getCallerID = (data) => {
   return data.match(/callerid=(.*)$/m)[1];
@@ -51,6 +46,9 @@ const xmpp = client({
 
 debug(xmpp, true);
   
+
+const { getTranscript } = require('../lib/get-transcript');
+
 const processBox = async (extension) => {
   await mkdirp(path.join(voicemailDirectory, extension, 'INBOX'));
   const parcels = lodash.uniqBy(fs.readdirSync(path.join(voicemailDirectory, extension, 'INBOX')), (v) => path.parse(v).name).map((v) => toParcel(extension, path.parse(v).name));
@@ -82,33 +80,6 @@ const processBoxes = async () => {
 };
 
 
-const getTranscript = async (parcel) => {
-  const bucket = await storage.bucket(bucketName);
-  await bucket.upload(parcel.filepath, {
-    destination: 'tmp'
-  });
-  const config = {
-    encoding: 'LINEAR16',
-    sampleRateHertz: 8000,
-    languageCode: 'en-US'
-  };
-  const audio = {
-    uri: 'gs://' + bucketName + '/tmp'
-  };
-  try {
-    const [ { results: [ { alternatives } ] } ] = await speech.recognize({
-      config,
-      audio
-    });
-    console.log(alternatives);
-    parcel.transcript = (alternatives[0] || {}).transcript;
-  } catch  (e) {
-    console.error(e);
-    parcel.transcript = '';
-  }
-  return parcel;
-};
-
 const spawnSync = require('child_process').spawnSync;
 
 const infura = new (require('ipfs-deploy/src/pinners/infura'))();
@@ -117,7 +88,7 @@ const uploadToIPFS = async (v) => {
   const { dir, name, ext } = path.parse(v.filepath);
   const { cid } = await infura.ipfs.add(fs.readFileSync(v.filepath));
   const result = await infura.pinCid(cid);
-  v.pinned = 'https://ipfs.io/ipfs/' + cid + '?filename=' + name + '.wav';
+  v.pinned = 'https://cloudflare-ipfs.com/ipfs/' + cid + '?filename=' + name + '.wav';
   return v;
 };
 

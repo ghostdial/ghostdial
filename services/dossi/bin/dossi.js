@@ -4,6 +4,20 @@ const debug = require('@xmpp/debug');
 const path = require('path');
 const { client, xml } = require('@xmpp/client');
 const xid = require('@xmpp/id');
+const pipl = require('@ghostdial/pipl');
+
+
+const piplQueryToObject = (query) => {
+  return query 
+    .match(/([^\s:]+):((?:"((?:[^"\\]|\\[\s\S])*)")|(?:\S+))/g)
+    .map((v) => v.split(':')
+    .map((v) => v.substr(0, 1) === '"' ? JSON.parse(v) : v))
+    .reduce((r, [key, value]) => {
+      r[key] = value;
+      return r;
+    }, {});
+};
+
 
 
 const spookyStuff = [
@@ -40,6 +54,32 @@ const ack = (stz) => {
 
 const twilio = new (require('twilio'))();
 const peopledatalabs = new (require('peopledatalabs'))();
+
+const printPiplResult = async (result, to) => {
+  const { possible_persons } = result;
+  if (!possible_persons || !possible_persons.length) {
+    return send('No match found in pipl', to);
+  }
+  const [ person ] = possible_persons;
+  send(JSON.stringify(person, null, 2), to);
+  const images = possible_persons.reduce((r, v) => r.concat((v.images || [])), []);
+  for (const image of images) {
+    await new Promise((resolve, reject) => setTimeout(resolve, 750));
+    xmpp.send(xml('message', { to, from, id: xid(), type: 'chat' }, xml('body', {}, image.url) + xml('x', { xmlns: 'jabber:x:oob' }, xml('url', {}, image.url))));
+  }
+};
+
+const piplNumberLookup = async (number, to) => {
+  const cached = await redis.get('pipl.' + number);
+  if (cached) {
+    await printPiplResult(JSON.parse(cached), to);
+  } else {
+    const result = await pipl.search({ phone: number });
+    await redis.set('pipl.' + number, JSON.stringify(result));
+    await redis.expire('pipl.' + number, 60*60*24*3);
+    await printPiplResult(result, to);
+  }
+};
 
 const twilioLookup = (phoneNumber) => twilio.lookups.phoneNumbers(phoneNumber).fetch({ type: ['carrier', 'caller-name'] });
 
@@ -103,7 +143,7 @@ const pullIncomingCalls = () => {
           const incoming = JSON.parse(incomingRaw);
           const jid = toJid({ host: process.env.DOMAIN, username: incoming.did });
           send('INCOMING:<' + incoming.from + '=>' + incoming.did + '>', jid);  
-          await printDossier(incoming.from, jid);
+          await callerId(incoming.from, jid);
         }
       } catch (e) {
         console.error(e);
@@ -112,8 +152,50 @@ const pullIncomingCalls = () => {
     }
   })().catch((err) => console.error(err));
 };
+const infura = new (require('ipfs-deploy/src/pinners/infura'))();
+const uploadToIPFS = async (search, data) => {
+  search = search.replace(/[^\w]+/g, '-').toLowerCase();
+  const { cid } = await infura.ipfs.add(Buffer.from(data));
+  const result = await infura.pinCid(cid);
+  return 'https://cloudflare-ipfs.com/ipfs/' + cid + '?filename=' + search + '.txt';
+  return v;
+};
+const callerId = async (number, to) => {
+  const twilioResults = await twilioLookup(number);
+  send(JSON.stringify(twilioResults, null, 2), to);
+  await piplNumberLookup(number, to);
+};
+  
 const printDossier = async (body, to) => {
-  if (/(?:^\d{10,11}$)/.test(body)) {
+  if (body.substr(0, 4) === 'pipl') {
+    const match = body.match(/^pipl\s+(.*$)/);
+    if (match) {
+      const search = match[1];
+      if (search.indexOf(':') !== -1) {
+        const data = JSON.stringify(await pipl.search(piplQueryToObject(search)), null, 2);
+        send(data, to);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        return send(await uploadToIPFS(search, data), to);
+      } else if (search.indexOf('@') !== -1) {
+        const data = JSON.stringify(await pipl.search({ email: search }), null, 2);
+        send(data, to);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        return send(await uploadToIPFS(search, data), to);
+      } else if (search.match(/\d+/)) {
+        const data = JSON.stringify(await pipl.search({ phone: search }), null, 2);
+        send(data, to);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        return send(await uploadToIPFS(search, data), to);
+      } else {
+        const split = search.split(/\s+/);
+        const data = JSON.stringify(await pipl.search({ first_name: split[0], last_name: split[1], state: split[2] }), null, 2);
+        send(data, to);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        return send(await uploadToIPFS(search, data), to);
+      }
+
+    }
+  } else if (/(?:^\d{10,11}$)/.test(body)) {
     if (body.length === 11) body = body.substr(1);
     body = '+1' + body;
     const twilioResults = await twilioLookup(body);

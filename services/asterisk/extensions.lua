@@ -2,49 +2,108 @@ extensions = {}
 
 require 'socket';
 local https = require 'ssl.https';
-local json = require 'json';
+local json = require 'rapidjson';
 local ltn12 = require 'ltn12';
 local redis = require 'redis';
 
 local lua_print = print;
 
-function to_host_and_port(uri)
-  local it = string.gmatch(uri, "(^[^:*]):(%d*)$");
-  return it(), it();
-end
+local cache = redis.connect('127.0.0.1', 6379)
 
-local cache = redis.connect(to_host_and_port(select(1, os.getenv("REDIS_HOST")) or '127.0.0.1:6379'));
-
-local registry = os.getenv("REGISTRY_URI") or 'https://localhost:3050';
+local registry = 'https://localhost:3050';
 
 local print = function (msg)
   app.verbose(msg);
 end
 
+function read_sip_users()
+  local state = 0;
+  local set = {};
+  for line in io.lines('/etc/asterisk/sip.conf') do
+    local comment = line:match('^%s*;');
+    if not comment then
+      if line:match('^%s*%[%d+%]') then
+        local user = line:match('([%d]+)');
+        set[user] = true;
+      end
+    end
+  end
+  return set;
+end
+
+function read_voicemail_users()
+  local set = {};
+  local mailbox = 'default';
+  local state = 0;
+  for line in io.lines('/etc/asterisk/voicemail.conf') do
+    local comment = line:match('^%s*;');
+    if not comment then
+      if state == 1 then
+        if line:match('^%s*%[') then return set; end
+        local user, pin = line:match('(%d+)%s*=>%s*(%d+)');
+        if user then set[user] = pin; end
+      elseif line:find('%[default%]') then
+        state = 1;
+      end
+    end
+  end
+  return set;
+end
+
+function sip_account_to_uri(account)
+  local found, _, user, host = account:find('^([^@]+)@([^:]+)');
+  if not found then return false, '';  end
+  return true, user .. '@' .. host;
+end
+
+function pstn_fallback_dial(channel)
+  local ext = channel.extension:get()
+  ext = extfor(ext) or ext;
+  local number = cache:get('fallback.' .. ext);
+  if not number then return 'CHANUNAVAIL'; end
+  local outbound = cache:get('outbound.' .. channel.did:get()) or 'voipms';
+  number = #number == 10 and ('1' .. number) or number;
+  local callerid_num, callerid_name = channel.callerid_num:get(), channel.callerid_name:get();
+  set_callerid(channel, didfor(callerid_num) or callerid_num);
+--  channel['CALLERID(name)'] = channel.callerid_num:get() .. ': ' .. channel.callerid_name:get();
+  print('dialing');
+  local status = dial('IAX2/' .. outbound .. '/' .. number, 20, 'U(detect_voicemail,s,1)g');
+  print(status);
+  set_callerid(channel, callerid_num);
+  channel['CALLERID(name)'] = callerid_name;
+  return status;
+end
+
+
+local DEFAULT_OUTBOUND = 'IAX2/voipms';
+
+function activate_simple_mobile(callerid, simnumber, airtime, zipcode, pin)
+  channel['CALLERID(num)'] = callerid;
+  channel['CALLERID(name)'] = "WIRELESS CALLER";
+  local payload = simnumber .. ':' .. airtime .. ':' .. pin .. ':' .. zipcode;
+  return dial(DEFAULT_OUTBOUND .. '/18778787908', 20, 'U(activate_simple_mobile^' .. payload .. ')');
+end
+
 function data247_carriertype(num)
+  if #num < 10 then return false, 'I'; end
   local response = {};
   local err, status = https.request({
     method="POST",
     url='https://api.data247.com/v3.0?key=' .. os.getenv('DATA247_API_KEY') .. '&api=CU&out=json&phone=' .. num .. '&addfields=type,last_port_date',
     sink=ltn12.sink.table(response)
   });
-  return status ~= 200, status == 200 and json.decode(response[1]).response.results[1].type;
+  return status ~= 200, status == 200 and (((json.decode(response[1]).response or {}).results or {})[1] or {}).type or 'V';
 end
 
---[[
 function is_voip(num)
-  return false;
   local err, result = data247_carriertype(num);
-  if (err) then
+  print(num .. 'is a number of type ' .. result);
+  if cache:get('voip-passthrough.' .. channel.sipuser:get()) then return false; end
+  if err then
     return true;
   else
     return result == 'V';
   end
-end
-]]
-
-function is_voip(num)
-  return false;
 end
 
 function is_blacklisted(channel, from)
@@ -56,51 +115,131 @@ function dial(...)
   return channel.DIALSTATUS:get();
 end
 
-local did_to_box = {};
-
-function link_voicemail(box, did)
-  did_to_box[did] = box;
-end
-
 function set_callerid(channel, callerid)
   print('Setting CALLERID(num) to ' .. callerid);
   channel['CALLERID(num)'] = callerid;
 end
 
-function write_voicemail_did(channel, msg_filepath)
-  local filepath = msg_filepath .. '.did.txt';
+local lfs = require 'lfs';
+
+function write_voicemail_did(number)
+  local dir = '/var/spool/asterisk/voicemail/default/' .. number;
+  lfs.mkdir(dir);
+  local filepath = '/var/spool/asterisk/voicemail/default/' .. number .. '/did.txt';
   local file = io.open(filepath, 'w');
-  file:write(channel.extension:get());
+  local extension = channel.extension:get();
+  file:write(didfor(extension) or extension);
+  print('wrote voicemail for ext ' .. number .. ' at filepath ' .. filepath);
   file:close();
 end
 
-function send_to_voicemail(channel, number)
-  if #number < 10 then
-    app.voicemail(number, 'u')
-  else
-    app.voicemail(did_to_box[channel.did:get()], 'u');
+extensions.activate_simple_mobile = {
+  s = function (context, extension)
+    local simnumber, airtime, pin, zipcode = channel.ARG1:get():match('([^:]+)');;
+    if not simnumber or not airtime or not pin or not zipcode then
+      channel.GOSUB_RESULT = 'ABORT';
+      return app['return']();
+    end
+    app.wait(23);
+    app.sendDTMF('2');
+    app.wait(6.5);
+    app.sendDTMF('2');
+    app.wait(26);
+    app.sendDTMF(simnumber);
+    app.wait(14);
+    text_to_speech('yes');
+    app.wait(12);
+    text_to_speech('no');
+    app.wait(17);
+    app.sendDTMF(airtime);
+    app.wait(10);
+    text_to_speech('yes');
+    app.wait(10);
+    app.sendDTMF(zipcode);
+    app.wait(5);
+    text_to_speech('yes');
+    app.wait(15);
+    app.sendDTMF(pin);
+    app.wait(4.5);
+    text_to_speech('yes');
+    app.wait(49);
+    text_to_speech('no');
+    app.wait(10);
+    channel.GOSUB_RESULT = 'CONTINUE';
+    app['return']();
   end
-  write_voicemail_did(channel, channel.VM_MESSAGEFILE:get() or '');
+};
+
+function to_transcript_filename(s)
+  return s:gsub('[^%w]', '-'):sub(1, 64):lower();
+end
+
+function text_to_speech(text)
+  local filename = to_transcript_filename(text);
+  app.system('text-to-speech \'' .. text .. '\'');
+  
+  print('filename: ' .. filename);
+  app.playback(filename);
+end
+  
+
+function send_to_voicemail(channel, number)
+  print('write_voicemail_did');
+  write_voicemail_did(number);
+  print('wrote');
+  print('number ' .. tostring(number));
+  app.voicemail(number, 'u');
   app.hangup();
+end
+
+extensions.send_to_voicemail = {
+  s = function (context, extension) 
+    send_to_voicemail(channel, channel.voicemail_box:get());
+  end
+};
+
+function primary_handler(channel)
+  send_to_voicemail(channel, '555')
 end
 
 function compute_last_cid_key(sipuser, number)
   return 'last-cid.' .. sipuser .. '.' .. number;
 end
 
-function get_last_cid(channel, number)
-  return cache:get(compute_last_cid_key(channel.sipuser:get(), number));
+function get_last_cid(number)
+  return select(1, cache:get(compute_last_cid_key(channel.sipuser:get(), number)));
 end
 
 function set_last_cid(channel, number, did)
   cache:set(compute_last_cid_key(channel.sipuser:get(), number), did);
 end
 
+function didfor(ext)
+  return cache:get('didfor.' .. ext)
+end
+
+function lookup_extension(sipuser)
+  local ext = cache:get('extfordevice.' .. sipuser)
+  if ext then return ext; end
+  local sipusers = read_sip_users();
+  for k, _ in pairs(sipusers) do
+    if cache:hget('devicelist.' .. k, sipuser) then
+      cache:set('extfordevice.' .. sipuser, k);
+      return k;
+    end
+  end
+  return nil;
+end
+
+function extfor(did)
+  return cache:get('extfor.' .. did);
+end
+
 function dial_outbound(channel, number)
   number = string.gsub(number, '+', '')
   if #number >= 20 then
     channel.override = number:sub(0, 10);
-    if did_to_ext[channel.override:get()] ~= channel.sipuser:get() then
+    if not cache:get('superuser.' .. channel.sipuser:get()) and extfor(channel.override:get()) ~= channel.sipuser:get() then
       return app.hangup();
     end
     set_last_cid(channel, number, channel.override:get());
@@ -108,9 +247,10 @@ function dial_outbound(channel, number)
   end
   number = #number == 10 and ('1' .. number) or number;
   local outbound = cache:get('outbound.' .. ((channel.override and channel.override:get()) or channel.did:get())) or 'voipms';
-  if not channel.immutable_callerid:get() then set_callerid(channel, channel.override and channel.override:get() or get_last_cid(channel, number) or channel.did:get()); end;
+  if not channel.immutable_callerid:get() then set_callerid(channel, channel.override and channel.override:get() or get_last_cid(number) or channel.did:get()); end;
   if extensions.inbound[number] then return extensions.inbound[number](context, number); end
   local response = {};
+  --[[
   local ok, status = https.request({
     url= registry .. '/resolve',
     method= 'POST',
@@ -119,30 +259,51 @@ function dial_outbound(channel, number)
     number=number
   }));
   local host = json.decode(response.response);
-  if not ok or status ~= 200 or host.status ~= 'success' then
-    return dial('IAX2/' .. outbound .. '/' .. number);
-  end
-  return dial('SIP/' .. channel['CALLERID(num)']:get() .. ':ghostdial@' .. host.result .. ':35061/' .. number);
+  ]]
+--  if not ok or status ~= 200 or host.status ~= 'success' then
+-- 
+  set_last_cid(channel, number, channel['CALLERID(num)']:get());
+  return dial('IAX2/' .. outbound .. '/' .. number);
+ -- end
+ -- return dial('SIP/' .. channel['CALLERID(num)']:get() .. ':ghostdial@' .. host.result .. ':35061/' .. number);
+end
+
+function coerce_to_did(number)
+  return didfor(number) or number;
 end
  
 function hit_em_wit_jg_real_quick(channel)
   local sipuser = channel.sipuser:get();
-  if sipuser ~= "101" and sipuser ~= "555" then
+  if sipuser == "101" then
     if #channel.callerid_num:get() == 10 then 
       channel.immutable_callerid = '1';
     end
     return dial_outbound(channel, '18772274669');
-  else
-    send_to_voicemail(channel, sipuser);
   end
+  local did = coerce_to_did(channel.extension:get());
+  send_to_voicemail(channel, extfor(did) or did);
+end
+
+function ring_group(to)
+  local devices = cache:hkeys('devicelist.' .. to) or {};
+  local withsip = {};
+  table.insert(devices, to);
+  for _, device in ipairs(devices) do
+    table.insert(withsip, 'SIP/' .. device);
+    print('SIP/' .. device);
+  end
+  return table.concat(withsip, '&');
 end
 
 function dialsip(channel, to, on_failure)
   print(channel.callerid_num:get());
   local voip = is_voip(channel.callerid_num:get())
   if not is_blacklisted(channel, channel.callerid_num:get()) and not is_voip(channel.callerid_num:get())  then
-    local status = dial('SIP/' .. to, 30);
-    if status == "CHANUNAVAIL" or status == "BUSY" or status == "CONGESTED" then
+    app.answer();
+    set_last_cid(channel, channel.callerid_num:get(), channel.did:get());
+    local status = dial(ring_group(to), 20);
+    if status == "CHANUNAVAIL" or status == "NOANSWER" then status = pstn_fallback_dial(channel); end
+    if status == "CHANUNAVAIL" or status == "BUSY" or status == "CONGESTED" or status == "NOANSWER" then
       return send_to_voicemail(channel, to)
     else
       return app.hangup();
@@ -152,143 +313,369 @@ function dialsip(channel, to, on_failure)
   end
 end
 
+function anonymous_device_handler(context, extension)
+  local ext = lookup_extension(channel['CALLERID(num)']:get());
+  channel.extcallerid = channel['CALLERID(num)']:get();
+  if not ext then return app['goto']('global_disa_handler', extension, 1); end
+  channel['CALLERID(num)'] = ext;
+  return app['goto']('authenticated', extension, 1);
+end
+
+extensions.anonymous_device = {
+  ["_+."] = function (context, extension)
+    return app['goto'](context, extension:sub(2), 1);
+  end,
+  ["_*."] = anonymous_device_handler,
+  ["_X."] = anonymous_device_handler,
+  ["*90"] = function (context, extension)
+    local ext = lookup_extension(channel['CALLERID(num)']:get());
+    cache:hdel('devicelist.' .. ext, channel['CALLERID(num)']:get());
+    text_to_speech('sip device removed');
+  end
+}
+
 extensions.inbound = {};
 extensions.default = {};
-
-function inbound_dial(did, ext, real_number)
-  local local_ctx = ext .. '-context';
-  extensions[local_ctx] = {
-    ["_X."] = function (context, extension)
-      channel.did = did;
-      channel.sipuser = ext;
-      channel.callerid_num = channel['CALLERID(num)']:get();
-      channel.callerid_name = channel['CALLERID(name)']:get();
-      channel.extension = extension;
-      print('OUTGOING CALL from ' .. ext .. ' to ' .. extension);
-      if (hooks[ext] or {})[extension] then
-        return hooks[ext][extension](channel);
-      elseif #extension < 10 then
-        dialsip(channel, extension);
-      else
-        dial_outbound(channel, extension);
-      end
+extensions.detect_voicemail = {
+  s = function (context, extension)
+    app.answer();
+    app.amd();
+    print("AMDSTATUS: " .. channel.AMDSTATUS:get());
+    print("AMDCAUSE: " .. channel.AMDCAUSE:get());
+    if channel.AMDSTATUS:get() == 'MACHINE' and channel.AMDCAUSE:get():match('LONGGREETING') then
+      channel.GOSUB_RESULT = 'BUSY';
     end
-  }; 
-  extensions.inbound[did] = function (context, extension)
+    app['return']();
+  end
+};
+
+function set_custom_extension(sipuser, key, value)
+  local is_superuser = cache:get('superuser.' .. sipuser);
+  if is_superuser then cache:set('custom-extension.' .. key, value); else cache:set('custom-extension.' .. sipuser .. '.' .. key, value); end
+  print('SET CUSTOM EXTENSION ' .. key .. ' to ' .. value);
+end
+
+function get_custom_extension(sipuser, key)
+  print('TRY CUSTOM EXTENSION: ' .. key);
+  local value = cache:get('custom-extension.' .. sipuser .. '.' .. key) or cache:get('custom-extension.' .. key);
+  if not value then print('NO CUSTOM EXTENSION FOR ' .. key); else print('VALUE: ' .. value); end
+  return value;
+end
+
+function sip_handler(context, extension)
+    local ext = channel['CALLERID(num)']:get();
+    local did = didfor(ext) or '8778888888';
+    local sipuser = ext;
+    app.mixmonitor(ext .. '-' .. extension .. '-' .. channel.UNIQUEID:get() .. '.wav', 'ab');
+    channel.did = did;
+    channel.sipuser = ext;
     channel.callerid_num = channel['CALLERID(num)']:get();
     channel.callerid_name = channel['CALLERID(name)']:get();
     channel.extension = extension;
+    local override = cache:get('override.' .. ext);
+    if override then channel.override = override; end
+    print('OUTGOING CALL from ' .. ext .. ' to ' .. extension);
+    local found, uri = sip_account_to_uri(extension);
+    if found then
+      print('DIALING EXTERNAL URI ' .. uri);
+      return app.dial('SIP/' .. uri);
+    end
+    local custom = get_custom_extension(ext, extension);
+    if custom then
+      return app['goto'](context, custom, 1);
+    end
+    if (hooks[ext] or {})[extension] then
+      return hooks[ext][extension](channel);
+    elseif #extension < 10 then
+      dialsip(channel, extension);
+    else
+      dial_outbound(channel, extension);
+    end
+end
+
+function get_callerid()
+  local callerid = channel['CALLERID(num)']:get();
+  print('CALLERID(num) is ' .. callerid);
+  return callerid;
+end
+
+
+function sip_decorate_handler(context, extension)
+  local callerid = get_callerid();
+  channel.sipuser = callerid;
+  channel.ext = callerid;
+  channel.did = didfor(callerid) or '8778888888';
+  channel.extension_with_modifiers = extension;
+  channel.extension = get_extension(extension);
+  print('EXTENSION WITHOUT MODIFIERS: ' .. channel.extension:get());
+  apply_modifiers(extension);
+  return app['goto']('authenticated_internal', channel.extension:get(), 1);
+end
+
+local modifiers = {
+  ["*"] = function (arg)
+    set_custom_extension(channel.ext:get(), arg, remove_modifier(channel.extension_with_modifiers:get(), "*"));
+  end,
+  ["0"] = function (arg)
+    print("OVERRIDE CALLERID(num) TO " .. arg);
+    channel.override = arg;
+  end,
+  ["7"] = function (arg)
+    print("DRY RUN");
+    channel.dry_run = 'true';
+  end
+};
+
+function find(t, lambda)
+  for k, v in ipairs(t) do
+    if lambda(v, k) then return v; end
+  end
+  return nil;
+end
+
+function join_modifiers(modifiers)
+  local result = '';
+  for k, v in pairs(modifiers) do
+    result = result .. '#' .. k .. '#' .. v;
+  end
+  return result;
+end
+
+function remove_modifier(extension, modifier)
+  local without_modifiers = get_extension(extension);
+  local modifiers = get_modifiers(extension);
+  table.remove(modifiers, modifier);
+  return without_modifiers .. join_modifiers(modifiers);
+end
+
+function iter_to_table(i)
+  local result = {};
+  for v in i do
+    table.insert(result, v);
+  end
+  return result
+end
+
+function to_parts(extension)
+  return iter_to_table(extension:gmatch('([^#]+)'));
+end
+
+function get_extension(extension)
+  return to_parts(extension)[1];
+end
+
+function get_modifiers(extension)
+  local parts = to_parts(extension);
+  local result = {};
+  local modifier = nil;
+  for i, v in ipairs(parts) do
+    if i % 2 == 0 then
+      modifier = v;
+    else
+      if modifier then result[modifier] = v; end
+    end
+  end
+  return result
+end
+
+function strip_out_modifiers(extension)
+  return find(to_parts(extension), function (v, k) return not v:match('#') end);
+end
+  
+function apply_modifiers(extension)
+  local modifier_table = get_modifiers(extension);
+  for key, arg in pairs(modifier_table) do
+    if not modifiers[key] then
+      print("MODIFIER " .. key .. " NOT FOUND, ABORT!");
+      return app.hangup();
+    end
+    modifiers[key](arg);
+  end
+end
+
+extensions.authenticated = {
+  ["_X."] = sip_decorate_handler,
+  ["_*."] = sip_decorate_handler,
+  ["_+."] = function (context, extension)
+    return sip_decorate_handler(context, extension:sub(1));
+  end
+};
+
+extensions.authenticated_internal = {
+    ["_X."] = sip_handler,
+    ["_*76*."] = function (context, extension)
+      local callerid, simnumber, airtime, zipcode, pin = extension:sub(4):match('([^%*]+)');
+      return simple_mobile_activate(callerid, simnumber, airtime, zipcode, pin);
+    end,
+    ["*89"] = function (context, extension)
+      return app.voicemailmain(get_callerid());
+    end,
+    ["*9"] = function (context, extension)
+      if #channel.extcallerid:get() < 10 then
+        cache:hset('devicelist.' .. get_callerid(), channel.extcallerid:get(), 1);
+	text_to_speech('sip telephone registered');
+      else
+        cache:set('fallback.' .. get_callerid(), channel.extcallerid:get());
+	text_to_speech('public telephone fallback set');
+      end
+      return app.hangup();
+    end,
+    ["_*1."] = function (context, extension)
+      local ring_group = cache:get('custom-ring-group.' .. get_callerid() .. '.' .. extension:sub(3)) or cache:get('custom-ring-group.' .. extension:sub(3));
+      return app.dial(ring_group, 30);
+    end,
+    ["*8"] = function (context, extension)
+      app.answer();
+      if #channel.extcallerid:get() < 10 then return app.hangup(); end
+      cache:set('sms-fallback.' .. get_callerid(), channel.extcallerid:get());
+      return app.hangup();
+    end,
+    ["*80"] = function (context, extension)
+      app.answer();
+      cache:del('sms-fallback.' .. get_callerid());
+      text_to_speech('sms fallback deleted');
+      return app.hangup();
+    end,
+    ["*90"] = function (context, extension)
+      app.answer();
+      cache:del('fallback.' .. get_callerid());
+      text_to_speech('public telephone fallback deleted');
+      return app.hangup();
+    end,
+    [".*9X_"] = function (context, extension)
+      local number = extension:sub(2);
+      cache:set('fallback.' .. get_callerid(), number);
+      return app.hangup();
+    end,
+    ["*69"] = function (context, extension)
+      local override = get_last_cid(get_callerid());
+      channel.override = override;
+      return app['goto']('authenticated', cache:get('last-called.' .. get_callerid()), 1);
+    end,
+    ["_*711X."] = function (context, extension)
+      local number = extension:sub(4);
+      channel['CALLERID(num)'] = number;
+      local status = dial('IAX2/voipms/711');
+      app.hangup();
+    end,
+    ["_**X."] = function (context, extension)
+      local extension_to_save, extension_record = extension:match('%*%*([^%*]+)%*(.*)$');
+      set_custom_extension(ext, extension_to_save, extension_record);
+      return app.hangup();
+    end
+  }; 
+extensions.inbound = {
+  ["_X."] = function (context, extension)
+    local did, ext = extension, extfor(extension);
+    channel.did = did;
+    channel.ext = ext;
+    channel.sipuser = ext;
+    local sipuser = ext;
+    app.mixmonitor(did .. '-' .. channel['CALLERID(num)']:get() .. '-' .. channel.UNIQUEID:get() .. '.wav', 'ab');
+    channel.callerid_num = channel['CALLERID(num)']:get();
+    channel.callerid_name = channel['CALLERID(name)']:get();
+    channel.extension = extension;
+    if not channel.callsin_status:get() then cache:rpush('calls-in', json.encode({ from=channel.callerid_num:get(), did=did })); end
     channel.did = did;
     channel.sipuser = ext;
+    cache:set('last-called.' .. ext, channel.callerid_num:get());
     print("INBOUND CALL from " .. channel['CALLERID(all)']:get())
     print("DEST: " .. channel.sipuser:get() .. " " .. channel.did:get());
     if channel.callerid_num:get() == real_number then
+      set_callerid(channel, channel.sipuser:get());
       return app.disa('no-password', channel.sipuser:get() .. '-context');
     end
     set_last_cid(channel, channel.callerid_num:get(), did);
     channel['CALLERID(name)'] = did .. ': ' .. channel['CALLERID(name)']:get();
     return dialsip(channel, ext);
   end 
-  extensions.default[did] = external_handler;
-end
+};
 
 function external_handler(context, extension)
     if not extensions.inbound[extension] then return; end
     print('EXTERNAL CALL FROM ' .. channel['SIPDOMAIN']:get());
     channel.sipdomain = channel['SIPDOMAIN']:get();
-    channel['CALLERID(num)'] = channel['SIPUSER']:get();
+    set_callerid(channel, channel['SIPUSER']):get();
     return extensions.inbound[extension](context, extension);
-end
-
-
-did_to_ext = {};
-
-users = {
-  { "4757772244", "555", "7576362081" },
-  { "5098509090", "666", "5092957376" },
-  { "3055633233", "420", "5083336704" },
-  { "8603187999", "123", "8604949393" },
-  { "3259997770", "555", "7576362081" },
-  { "8603187796", "606", "8609178606" },
-  { "8603187799", "606", "8609178606" },
-  { "8603187798", "339", "7576355339" },
-  { "8603187800", "183", "8609172183" },
-  { "4012342344", "555", "7576362081" },
-  { "4015155222", "555", "7576362081" },
-  { "4013664448", "555", "7576362081" },
-  { "3077353900", "555", "7576362081" },
-  { "3259997779", "555", "7576362081" },
-  { "3078864700", "555", "7576362081" },
-  { "4015940045", "101", "8603729858" },
-  { "4015940050", "101", "8603729858" },
-  { "4019006777", "234", "2347031816621" }
-};
-
-for k, v in ipairs(users) do
-  inbound_dial(v[1], v[2], v[3]);
-  did_to_ext[v[1]] = v[2];
-  link_voicemail(v[2], v[1]);
 end
 
 function send_to_zero_call(channel)
   set_callerid(channel, channel.did:get());
   local outbound = cache:get('outbound.' .. ((channel.override and channel.override:get()) or channel.did:get())) or 'voipms';
-  return dial('IAX2/' .. outbound .. '/14139311587,,D(767665032#)');
+  return dial('IAX2/' .. outbound .. '/16507810918,,D(901976795#)');
+end
+
+function ghost_em(number)
+  extensions.inbound[number] = function (context, extension)
+    cache:rpush('calls-in', json.encode({ from=channel['CALLERID(num)']:get(), did=number }));
+    app.playback('ss-noservice');
+    app.hangup();
+  end
 end
 
 hooks = {
   ["555"] = {
-    ["990"] = function (context, extension) send_to_zero_call(channel); end
+    ["990"] = function (context, extension) send_to_zero_call(channel); end,
+    ["4757772244"] = function (context, extension) return app.hangup(); end
   },
   ["420"] = {
     ["990"] = function (context, extension) send_to_zero_call(channel); end
+  },
+  ["715"] = {
+    ["990"] = function (context, extension) send_to_zero_call(channel); end
+  },
+  ["287"] = {
+    ["990"] = function (context, extension) send_to_zero_call(channel); end
   }
 };
 
-sip = {
-  general = {
-    transport="udp",
-    bind="0.0.0.0",
-    bindport="35060",
-    tlsbindaddr="0.0.0.0:35061",
-    tlsenable="yes",
-    tlscertfile="/etc/asterisk/keys/stomp.dynv6.net.crt",
-    tlscafile="/etc/asterisk/keys/ca.crt",
-    tlsprivatekey="/etc/asterisk/keys/stomp.dynv6.net.key",
-    srvlookup="yes",
-    qualify="no",
-    disallow="all",
-    allow="ulaw",
-    allow="g729",
-    allow="gsm",
-    allow="alaw",
-    allow="t140",
-    textsupport="yes"
-  }
-};
+function add_pin(number, pin)
+  local primary = extensions.inbound[number];
+  extensions.inbound[number] = function (context, extension)
+    cache:rpush('calls-in', json.encode({ from=channel.callerid_num:get(), did=did }));
+    channel.callsin_status = 'done';
 
-function create_sip_account(extension, password)
-  sip[extension] = {
-    type="friend",
-    transport="udp,tls",
-    encryption="yes",
-    carevite="no",
-    host="dynamic",
-    defaultuser=extension,
-    nat="force_rport,comedia",
-    secret=password
-  };
-end
-
-extensions.inbound["4012092999"] = function (context, extension)
-  channel['CALLERID(name)'] = "MUSHKI: " .. channel['CALLERID(name)']:get();
-  local status = dial("SIP/555&SIP/101");
-  if status ~= 'SUCCESS' then
-    send_to_voicemail(channel, 999);
+    app.authenticate(pin, nil, 4);
+    return primary(context, extension);
   end
 end
 
-did_to_ext["4012092999"] = "555";
+add_pin('4757772244', 8104);
+--add_pin('7576362081', 8104);
+
+global_disa_did = '4755575777';
+
+voicemail_users = read_voicemail_users();
+
+extensions.global_disa = {
+  [global_disa_did] = function (context, extension)
+    app.answer();
+    app.disa('no-password', 'global_disa_handler');
+  end
+};
+
+extensions.global_disa_handler = {
+  ['_X.'] = function (context, extension)
+    local users = read_voicemail_users();
+    local sipuser = extension:sub(1, 3);
+    print('authenticate as: ' .. sipuser);
+    if not users[sipuser] then return app.hangup(); end
+    local pin = extension:sub(4, 3 + #users[sipuser]);
+    print('try: ' .. pin);
+    if users[sipuser] ~= pin then
+      print('failure: wanted ' .. users[sipuser]);
+      return app.hangup();
+    end
+    local extension = extension:sub(3 + #users[sipuser] + 1);
+    channel.sipuser = sipuser;
+    channel.extcallerid = channel['CALLERID(num)']:get();
+    set_callerid(channel, sipuser);
+    return app['goto']('authenticated', extension, 1);
+  end
+};
+extensions.inbound[global_disa_did] = function (context, extension)
+  app['goto']('global_disa', extension, 1);
+end
 
 function write_sip_accounts()
   local file = io.open('/etc/asterisk/sip.conf', 'w');
@@ -299,3 +686,10 @@ function write_sip_accounts()
     end
   end
 end
+
+ghost_em('7576362081');
+ghost_em('4757772244');
+ghost_em('4012342344');
+ghost_em('3259997770');
+ghost_em('4015155222');
+
