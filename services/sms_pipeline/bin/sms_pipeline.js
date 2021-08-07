@@ -279,7 +279,7 @@ const pollOneMMS = async () => {
   const response = await voipms.getMMS.get({
     type: 1,
     all_messages: 1,
-    from: fromUnix(last),
+    from: fromUnix(last + 1),
     to: fromUnix(now),
   });
   const { sms } = response;

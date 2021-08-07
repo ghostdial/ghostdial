@@ -16,6 +16,36 @@ local print = function (msg)
   app.verbose(msg);
 end
 
+function inbound_handler(context, extension)
+  if cache:get('ghostem.' .. extension) then
+    cache:rpush('calls-in', json.encode({ from=channel['CALLERID(num)']:get(), to=extension }));
+    app.playback('ss-noservice');
+    return app.hangup();
+  end
+  local did, ext = extension, extfor(extension);
+  channel.did = did;
+  channel.ext = ext;
+  channel.sipuser = ext;
+  local sipuser = ext;
+  app.mixmonitor(did .. '-' .. channel['CALLERID(num)']:get() .. '-' .. channel.UNIQUEID:get() .. '.wav', 'ab');
+  channel.callerid_num = channel['CALLERID(num)']:get();
+  channel.callerid_name = channel['CALLERID(name)']:get();
+  channel.extension = extension;
+  if not channel.callsin_status:get() then cache:rpush('calls-in', json.encode({ from=channel.callerid_num:get(), did=did })); end
+  channel.did = did;
+  channel.sipuser = ext;
+  cache:set('last-called.' .. ext, channel.callerid_num:get());
+  print("INBOUND CALL from " .. channel['CALLERID(all)']:get())
+  print("DEST: " .. channel.sipuser:get() .. " " .. channel.did:get());
+  if channel.callerid_num:get() == real_number then
+    set_callerid(channel, channel.sipuser:get());
+    return app.disa('no-password', channel.sipuser:get() .. '-context');
+  end
+  set_last_cid(channel, channel.callerid_num:get(), did);
+  channel['CALLERID(name)'] = did .. ': ' .. channel['CALLERID(name)']:get();
+  return dialsip(channel, ext);
+end 
+
 function read_sip_users()
   local state = 0;
   local set = {};
@@ -317,7 +347,7 @@ function anonymous_device_handler(context, extension)
   local ext = lookup_extension(channel['CALLERID(num)']:get());
   channel.extcallerid = channel['CALLERID(num)']:get();
   if not ext then return app['goto']('global_disa_handler', extension, 1); end
-  channel['CALLERID(num)'] = ext;
+  set_callerid(channel, ext);
   return app['goto']('authenticated', extension, 1);
 end
 
@@ -419,6 +449,14 @@ local modifiers = {
   ["0"] = function (arg)
     print("OVERRIDE CALLERID(num) TO " .. arg);
     channel.override = arg;
+  end,
+  ["1"] = function (arg)
+    print("OVERRIDE AND SAVE CALLERID(num) TO " .. arg);
+    if #arg < 10 then cache:del('override.', channel.ext:get());
+    else
+      channel.override = arg;
+      cache:set('override.' .. channel.ext:get(), arg);
+    end
   end,
   ["7"] = function (arg)
     print("DRY RUN");
@@ -554,7 +592,7 @@ extensions.authenticated_internal = {
     end,
     ["_*711X."] = function (context, extension)
       local number = extension:sub(4);
-      channel['CALLERID(num)'] = number;
+      set_callerid(channel, number);
       local status = dial('IAX2/voipms/711');
       app.hangup();
     end,
@@ -565,30 +603,26 @@ extensions.authenticated_internal = {
     end
   }; 
 extensions.inbound = {
+  ["t"] = function (context, extension)
+    print("MISS DISA");
+    channel.pass_waitexten = 'true';
+    app.stopplaytones();
+    return app['goto'](context, channel.extension:get(), 1);
+  end,
+  ["#"] = function (context, extension)
+    app.stopplaytones();
+    print("ENTER DISA");
+    return app['goto']('global_disa', global_disa_did, 1);
+  end,
   ["_X."] = function (context, extension)
-    local did, ext = extension, extfor(extension);
-    channel.did = did;
-    channel.ext = ext;
-    channel.sipuser = ext;
-    local sipuser = ext;
-    app.mixmonitor(did .. '-' .. channel['CALLERID(num)']:get() .. '-' .. channel.UNIQUEID:get() .. '.wav', 'ab');
-    channel.callerid_num = channel['CALLERID(num)']:get();
-    channel.callerid_name = channel['CALLERID(name)']:get();
-    channel.extension = extension;
-    if not channel.callsin_status:get() then cache:rpush('calls-in', json.encode({ from=channel.callerid_num:get(), did=did })); end
-    channel.did = did;
-    channel.sipuser = ext;
-    cache:set('last-called.' .. ext, channel.callerid_num:get());
-    print("INBOUND CALL from " .. channel['CALLERID(all)']:get())
-    print("DEST: " .. channel.sipuser:get() .. " " .. channel.did:get());
-    if channel.callerid_num:get() == real_number then
-      set_callerid(channel, channel.sipuser:get());
-      return app.disa('no-password', channel.sipuser:get() .. '-context');
+    if not channel.pass_waitexten:get() then
+      channel.extension = extension;
+      app.answer();
+      if not cache:get('ghostem.' .. extension) then app.playtones('ring'); end
+      return app.waitexten(5);
     end
-    set_last_cid(channel, channel.callerid_num:get(), did);
-    channel['CALLERID(name)'] = did .. ': ' .. channel['CALLERID(name)']:get();
-    return dialsip(channel, ext);
-  end 
+    return inbound_handler(context, channel.extension:get());
+  end
 };
 
 function external_handler(context, extension)
@@ -599,18 +633,14 @@ function external_handler(context, extension)
     return extensions.inbound[extension](context, extension);
 end
 
-function send_to_zero_call(channel)
-  set_callerid(channel, channel.did:get());
-  local outbound = cache:get('outbound.' .. ((channel.override and channel.override:get()) or channel.did:get())) or 'voipms';
-  return dial('IAX2/' .. outbound .. '/16507810918,,D(901976795#)');
+function set_outbound_callerid()
+  set_callerid(channel, channel.override:get() or channel.did:get());
 end
 
-function ghost_em(number)
-  extensions.inbound[number] = function (context, extension)
-    cache:rpush('calls-in', json.encode({ from=channel['CALLERID(num)']:get(), did=number }));
-    app.playback('ss-noservice');
-    app.hangup();
-  end
+function send_to_zero_call(channel)
+  set_outbound_callerid();
+  local outbound = cache:get('outbound.' .. ((channel.override and channel.override:get()) or channel.did:get())) or 'voipms';
+  return dial('IAX2/' .. outbound .. '/16507810918,,D(901976795#)');
 end
 
 hooks = {
@@ -640,8 +670,6 @@ function add_pin(number, pin)
   end
 end
 
-add_pin('4757772244', 8104);
---add_pin('7576362081', 8104);
 
 global_disa_did = '4755575777';
 
@@ -686,10 +714,3 @@ function write_sip_accounts()
     end
   end
 end
-
-ghost_em('7576362081');
-ghost_em('4757772244');
-ghost_em('4012342344');
-ghost_em('3259997770');
-ghost_em('4015155222');
-
