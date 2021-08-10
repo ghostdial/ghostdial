@@ -482,7 +482,7 @@ end
 function remove_modifier(extension, modifier)
   local without_modifiers = get_extension(extension);
   local modifiers = get_modifiers(extension);
-  table.remove(modifiers, modifier);
+  modifiers[modifier] = nil;
   return without_modifiers .. join_modifiers(modifiers);
 end
 
@@ -613,6 +613,9 @@ extensions.inbound = {
     app.stopplaytones();
     print("ENTER DISA");
     return app['goto']('global_disa', global_disa_did, 1);
+  end,
+  ["*"] = function (context, extension)
+    return send_to_voicemail(channel, extfor(channel.extension:get()));
   end,
   ["_X."] = function (context, extension)
     if not channel.pass_waitexten:get() then

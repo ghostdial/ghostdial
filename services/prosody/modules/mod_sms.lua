@@ -14,23 +14,66 @@ local serialize = require "util.serialization".serialize;
 local pairs, ipairs = pairs, ipairs;
 local setmetatable = setmetatable;
 local rostermanager = require 'core.rostermanager';
+local usermanager = require 'core.usermanager';
+local storagemanager = require 'core.storagemanager';
 
 function jid_to_components(jid)
   local node, host, resource = jid_split(jid);
   return { full = node .. '@' .. host, node = node, host = host, resource = resource };
 end
 
-function subscribe_one_way(from_jid, to_jid)
-  local from, to = jid_to_components(from_jid), jid_to_components(to_jid);
-  rostermanager.set_contact_pending_out(from.node, from.host, to.full);
-  rostermanager.set_contact_pending_in(to.node, to.host, from.full);
-  rostermanager.subscribed(to.node, to.host, from.full);
-  rostermanager.process_inbound_subscription_approval(from.node, from.host, to.full);
+function unsubscribe(user_jid, contact_jid)
+	local user_username, user_host = jid_split(user_jid);
+	local contact_username, contact_host = jid_split(contact_jid);
+	if not hosts[user_host] then
+		warn("The host '%s' is not configured for this server.", user_host);
+		return;
+	end
+	if hosts[user_host].users.name == "null" then
+		storagemanager.initialize_host(user_host);
+		usermanager.initialize_host(user_host);
+	end
+	-- Update user's roster to say subscription is cancelled...
+	rostermanager.unsubscribe(user_username, user_host, contact_jid);
+	if hosts[contact_host] then
+		if contact_host ~= user_host and hosts[contact_host].users.name == "null" then
+			storagemanager.initialize_host(contact_host);
+			usermanager.initialize_host(contact_host);
+		end
+		-- Update contact's roster to say subscription is cancelled...
+		rostermanager.unsubscribed(contact_username, contact_host, user_jid);
+	end
+end
+function subscribe(user_jid, contact_jid)
+	local user_username, user_host = jid_split(user_jid);
+	local contact_username, contact_host = jid_split(contact_jid);
+	if not hosts[user_host] then
+		warn("The host '%s' is not configured for this server.", user_host);
+		return;
+	end
+	if hosts[user_host].users.name == "null" then
+		storagemanager.initialize_host(user_host);
+		usermanager.initialize_host(user_host);
+	end
+	-- Update user's roster to say subscription request is pending...
+	rostermanager.set_contact_pending_out(user_username, user_host, contact_jid);
+	if hosts[contact_host] then
+		if contact_host ~= user_host and hosts[contact_host].users.name == "null" then
+			storagemanager.initialize_host(contact_host);
+			usermanager.initialize_host(contact_host);
+		end
+		-- Update contact's roster to say subscription request is pending...
+		rostermanager.set_contact_pending_in(contact_username, contact_host, user_jid);
+		-- Update contact's roster to say subscription request approved...
+		rostermanager.subscribed(contact_username, contact_host, user_jid);
+		-- Update user's roster to say subscription request approved...
+		rostermanager.process_inbound_subscription_approval(user_username, user_host, contact_jid);
+	end
 end
 
-function subscribe(from, to)
-  subscribe_one_way(from, to);
-  subscribe_one_way(to, from);
+function subscribe_two_way(from, to)
+  subscribe(from, to);
+  subscribe(to, from);
 end
 
 local component_host = module:get_host();
@@ -164,10 +207,10 @@ function iq_disco_info(stanza)
     local reply = data_cache.disco_info;
     if reply == nil then
       reply = st.reply(stanza):query("http://jabber.org/protocol/disco#info");
-      reply:tag("identity", {category='gateway', type='sms', name=component_name}):up();
-      reply:tag("feature", {var="urn:xmpp:receipts"}):up();
-      reply:tag("feature", {var="jabber:iq:register"}):up();
-      reply:tag("feature", {var="http://jabber.org/protocol/rosterx"}):up();
+--      reply:tag("identity", {category='gateway', type='sms', name=component_name}):up();
+--      reply:tag("feature", {var="urn:xmpp:receipts"}):up();
+--      reply:tag("feature", {var="jabber:iq:register"}):up();
+--      reply:tag("feature", {var="http://jabber.org/protocol/rosterx"}):up();
       reply = reply:tag("feature", {var="http://jabber.org/protocol/commands"}):up();
       reply = reply:tag("feature", {var="jabber:iq:time"}):up();
       reply = reply:tag("feature", {var="jabber:iq:version"}):up();
@@ -219,45 +262,25 @@ function presence_stanza_handler(origin, stanza)
 	if to.node ~= nil and to.host ~= nil then
 		to_bjid = to.node.."@"..to.host
 	end
-	module:log('info', from_bjid);
-	module:log('info', to_bjid);
-	module:log('info', json.encode(to));
-	module:log('info', json.encode(from));
 
 		-- The component itself is online, so send component's presence
 
 		-- Do roster item exchange: send roster items to client
 		-- SMS user presence
-	if not users[to.node] then
-		users[to.node] = smsuser:register(from.node);
-	end
 	if pres.type == 'subscribe' then
-			module:log('info', 'sms user subscribe');
-			if not (users[to.node].data.roster or {})[from.node] then
-				users[to.node]:roster_add(from_bjid, 'subscribed');
-				iq_roster_push(origin, stanza);
-			       module:log('info', 'registered added and subscribed');
-			end
-			--subscribe_one_way(to_bjid, from_bjid);
-			module:log('info', 'sending user presence');
-			origin.send(st.presence({to=from_bjid, from=component_host, type="subscribed" }));
-			origin.send(st.presence({to=from_bjid, from=to_bjid}));
-
-		end
-		if pres.type == 'unsubscribe' then
-			users[to.node]:roster_update_subscription(from_bjid, 'none');
-			iq_roster_push(origin, stanza);
-			origin.send(st.presence({to=from_bjid, from=to_bjid, type='unsubscribed'}));
-			users[from_bjid]:roster_delete(to.node)
+		origin.send(st.presence({to=from_bjid, from=component_host, type="subscribed" }));
+		--RIGHTHERE		
 	end
-	if users[from_bjid].data.roster[to.node] then
-		origin.send(st.presence({to=from_bjid, from=to_bjid}));
-	end
+	--[[
+	if pres.type == 'unsubscribe' then
+		origin.send(st.presence({to=from_bjid, from=to_bjid, type='unsubscribed'}));
+		unsubscribe(to_bjid, from_bjid);
+ 	end
+	]]
 	return true;
-	end
+end
 
 function sms_event_handler(event)
-  module:log('info', tostring(event.stanza));
   local found = string.find(module:get_host(), select(2, jid_split(event.stanza.attr.from)) or '');
   if found then
     local node, host = jid_split(event.stanza.attr.from);
@@ -322,6 +345,7 @@ end
 
 function message_handle(event)
   local stanza, origin = event.stanza, event.origin;
+  module:log('info', tostring(event.stanza));
   message_stanza_handler(event);
 end
 
@@ -354,9 +378,10 @@ function message_stanza_handler(event)
   local body = stanza:get_child('body');
   local msg = {
     body = (body and body:get_text()),
-    x = stanza:get_child('x'),
+    x = stanza:get_child('x', 'jabber:x:oob'),
     request_receipt = stanza:get_child('request', 'urn:xmpp:receipts')
   };
+  module:log('info', json.encode(msg));
   if msg.request_receipt then
     module:log('info', 'confirming message delivery');
     confirm_message_delivery(event);
@@ -368,7 +393,7 @@ function message_stanza_handler(event)
   local attachments, message = {}, '';
   if msg.body or msg.x then
     if msg.x then
-      attachments = { msg.x:get_text() };
+      attachments = { msg.x:get_child('url'):get_text() };
     else
       message = msg.body;
     end
@@ -391,9 +416,9 @@ end
 function sms_to_stanzas(sms)
   local result = {};
   for _, attachment in ipairs(sms.attachments or {}) do
-    table.insert(result, st.message({ from=sms.from .. '@' .. component_host, to=sms.to .. '@stomp.dynv6.net', type='chat'  }):tag('active', { xmlns="http://jabber.org/protocol/chatstates" }):up():tag('body'):text(attachment):up():tag('x', { xmlns="jabber:x:oob" }):tag('url'):text(attachment):up():up());
+    table.insert(result, st.message({ from=sms.from .. '@' .. component_host, to=sms.to .. '@pulvermacher.io', type='chat'  }):tag('active', { xmlns="http://jabber.org/protocol/chatstates" }):up():tag('body'):text(attachment):up():tag('x', { xmlns="jabber:x:oob" }):tag('url'):text(attachment):up():up());
   end
-  if sms.message ~= '' then table.insert(result, st.message({ from=(sms['from'] .. '@sms.stomp.dynv6.net'), to=(sms['to'] .. '@stomp.dynv6.net'), type='chat' }):tag('active', { xmlns = 'http://jabber.org/protocol/chatstates' }):up():tag('body'):text(sms.message)) end
+  if sms.message ~= '' then table.insert(result, st.message({ from=(sms['from'] .. '@sms.pulvermacher.io'), to=(sms['to'] .. '@pulvermacher.io'), type='chat' }):tag('active', { xmlns = 'http://jabber.org/protocol/chatstates' }):up():tag('body'):text(sms.message)) end
   return result;
 end
 
@@ -410,6 +435,6 @@ module:hook("message/full", message_handle);
 module:hook("presence/full", presence_handle);
 module:hook("iq/host", iq_handle);
 module:hook("message/host", message_handle);
-module:hook("presence/host", presence_handle);
+--module:hook("presence/host", presence_handle);
 
 tick();
