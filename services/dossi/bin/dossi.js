@@ -53,7 +53,19 @@ async function holehe(username) {
   return stripUsed(stdout);
 }
 
-
+async function sherlock(username) {
+  const subprocess = child_process.spawn('python3', [path.join(process.env.HOME, 'sherlock', 'sherlock', 'sherlock.py'), '--print-found', username], { stdio: 'pipe' });
+  const stdout = await new Promise((resolve, reject) => {
+    let data = '';
+    subprocess.stdout.setEncoding('utf8');
+    subprocess.stdout.on('data', (v) => { data += v; });
+    subprocess.on('exit', (code) => {
+      if (code !== 0) return reject(Error('non-zero exit code'));
+      resolve(data);
+    });
+  });
+  return stdout;
+}
 
 const mkTmp = async () => {
   await mkdirp(tmpdir);
@@ -259,6 +271,16 @@ const printDossier = async (body, to) => {
       send('holehe ' + search, to);
       send('wait for complete ...', to);
       send(await holehe(search), to);
+    }
+    return;
+  }
+  if (body.substr(0, 'sherlock'.length).toLowerCase() === 'sherlock') {
+    const match = body.match(/^sherlock\s+(.*$)/i);
+    if (match) {
+      const search = match[1];
+      send('sherlock ' + search + ' --print-found', to);
+      send('wait for complete ...', to);
+      send(await sherlock(search), to);
     }
     return;
   }
