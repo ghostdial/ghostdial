@@ -15,6 +15,9 @@ const readResult = async (query) => {
   const result = JSON.parse((await fs.readFile(path.join(tmpdir, query + '.json'), 'utf8')).trim());
   return result;
 };
+var stripUsed = (s) => {
+  return s.split('\n').filter((v) => v.match('[+]')).join('\n');
+};
 
 const readResultRaw = async (query) => {
   const result = (await fs.readFile(path.join(tmpdir, query + '.json'), 'utf8')).trim();
@@ -35,6 +38,22 @@ async function whatsmyname(username) {
   });
   return stdout;
 }
+
+async function holehe(username) {
+  const subprocess = child_process.spawn('holehe', [username, '--only-used', '--no-color'], { stdio: 'pipe' });
+  const stdout = await new Promise((resolve, reject) => {
+    let data = '';
+    subprocess.stdout.setEncoding('utf8');
+    subprocess.stdout.on('data', (v) => { data += v; });
+    subprocess.on('exit', (code) => {
+      if (code !== 0) return reject(Error('non-zero exit code'));
+      resolve(data);
+    });
+  });
+  return stripUsed(stdout);
+}
+
+
 
 const mkTmp = async () => {
   await mkdirp(tmpdir);
@@ -230,6 +249,16 @@ const printDossier = async (body, to) => {
       send('web_accounts_list_checker.py -u ' + search, to);
       send('wait for complete ...', to);
       send(await whatsmyname(search), to);
+    }
+    return;
+  }
+  if (body.substr(0, 'holehe'.length).toLowerCase() === 'holehe') {
+    const match = body.match(/^holehe\s+(.*$)/i);
+    if (match) {
+      const search = match[1];
+      send('holehe ' + search, to);
+      send('wait for complete ...', to);
+      send(await holehe(search), to);
     }
     return;
   }
