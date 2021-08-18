@@ -85,7 +85,7 @@ app.get("/upload/:slot/:filename", (req, res) => {
     res.setHeader('Content-Length', await redis.get(req.params.slot + '.length'));
     const decryptStream = crypto.createDecipheriv(algorithm, secret, secret.slice(0, 16));
     const stream = request({
-      url: 'https://cloudflare-ipfs.com/ipfs/' + cid,
+      url: 'https://ipfs.io/ipfs/' + cid,
       qs: {
         filename: req.params.filename
       },

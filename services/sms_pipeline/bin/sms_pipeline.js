@@ -19,6 +19,34 @@ const voipms = new (require("@ghostdial/voipms"))({
   username: VOIPMS_USERNAME,
   password: VOIPMS_PASSWORD,
 });
+const mkdirp = require('mkdirp');
+const SMS_SQLITE3_DATABASE = process.env.SMS_SQLITE3_DATABASE || path.join(process.env.HOME, '.sms_pipeline', 'sms.db');
+
+const knex = require('knex')({
+  client: 'sqlite3',
+  connection: {
+    filename: SMS_SQLITE3_DATABASE
+  }
+});
+
+const initializeDatabase = async () => {
+  await mkdirp(path.parse(SMS_SQLITE3_DATABASE).dir);
+  const exists = await knex.schema.hasTable('messages');
+  if (!exists) {
+    await knex.schema.createTable('messages', table => {
+      table.increments('id');
+      table.string('from');
+      table.string('to');
+      table.string('message');
+      table.string('attachments');
+      table.time('time');
+    });
+  }
+};
+
+const insertToDatabase = async (sms) => {
+  await knex('messages').insert(Object.assign({}, sms, { attachments: JSON.stringify(sms.attachments || []), time: Math.floor(Date.now() / 1000) }));
+};
 
 const redis = new (require("ioredis"))();
 
@@ -219,6 +247,7 @@ const handleSms = async (sms) => {
     }
     console.log("Got incoming message!");
     console.log(util.inspect(sms, { colors: true, depth: 2 }));
+    await insertToDatabase(sms);
     await redis.rpush(SMS_IN_CHANNEL, JSON.stringify(sms));
     const ext = await redis.get("extfor." + sms.to);
     if (!ext) return;
@@ -329,6 +358,7 @@ const flushOne = async (msg) => {
   const decoded = mutateCoerceAttachments(JSON.parse(toString(msg)));
   console.log("Got outgoing message from Prosody!");
   console.log(util.inspect(decoded, { colors: true, depth: 2 }));
+  await insertToDatabase(decoded);
   if ((decoded.message || "").length > 160 || decoded.attachments.length)
     await sendMMS(decoded);
   else await sendSMPP(decoded);
@@ -365,6 +395,7 @@ const createConsumer = async () => {
 };
 
 (async () => {
+  await initializeDatabase();
   createConsumer().catch((err) => console.error(err));
   startPollingForMMS().catch((err) => console.error(err));
   await startSMPPServer(handleSms);

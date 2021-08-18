@@ -14,10 +14,13 @@
   "ethers": "^5.1.4",
   "fs-extra": "^10.0.0",
   "ioredis": "^4.27.3",
+  "knex": "^0.21.21",
+  "mkdirp": "^1.0.4",
   "moment": "^2.29.1",
   "query-string": "^7.0.0",
   "request": "^2.88.2",
-  "smpp": "^0.5.0"
+  "smpp": "^0.5.0",
+  "sqlite3": "^5.0.2"
  },
  "devDependencies": {
   "cross-env": "^7.0.3",

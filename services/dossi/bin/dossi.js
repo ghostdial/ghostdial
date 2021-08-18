@@ -1,10 +1,57 @@
 'use strict';
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = 0;
 const debug = require('@xmpp/debug');
-const path = require('path');
 const { client, xml } = require('@xmpp/client');
 const xid = require('@xmpp/id');
 const pipl = require('@ghostdial/pipl');
+const child_process = require('child_process');
+const fs = require('fs-extra');
+const tmpdir = require('tmpdir');
+
+const path = require('path');
+const mkdirp = require('mkdirp');
+
+const readResult = async (query) => {
+  const result = JSON.parse((await fs.readFile(path.join(tmpdir, query + '.json'), 'utf8')).trim());
+  return result;
+};
+
+const readResultRaw = async (query) => {
+  const result = (await fs.readFile(path.join(tmpdir, query + '.json'), 'utf8')).trim();
+  return result;
+};
+async function whatsmyname(username) {
+  await mkTmp();
+  const dir = process.cwd();
+  process.chdir(path.join(process.env.HOME, 'WhatsMyName'));
+  const subprocess = child_process.spawn('python3', [path.join(process.env.HOME, 'WhatsMyName', 'web_accounts_list_checker.py'), '-u', username, '-of', path.join(tmpdir, username + '.json') ], { stdio: 'pipe' });
+  process.chdir(dir);
+  const stdout = await new Promise((resolve, reject) => {
+    let data = '';
+    subprocess.on('exit', (code) => {
+      if (code !== 0) return reject(Error('non-zero exit code'));
+      resolve(readResultRaw(username));
+    });
+  });
+  return stdout;
+}
+
+const mkTmp = async () => {
+  await mkdirp(tmpdir);
+};
+
+async function socialscan(username) {
+  await mkTmp();
+  const subprocess = child_process.spawn('socialscan', ['--json', path.join(tmpdir, username + '.json'), username], { stdio: 'pipe' });
+  const stdout = await new Promise((resolve, reject) => {
+    let data = '';
+    subprocess.on('exit', (code) => {
+      if (code !== 0) return reject(Error('non-zero exit code'));
+      resolve(readResult(username));
+    });
+  });
+  return stdout;
+}
 
 
 const piplQueryToObject = (query) => {
@@ -167,8 +214,28 @@ const callerId = async (number, to) => {
 };
   
 const printDossier = async (body, to) => {
-  if (body.substr(0, 4) === 'pipl') {
-    const match = body.match(/^pipl\s+(.*$)/);
+
+  if (body.substr(0, 'socialscan'.length).toLowerCase() === 'socialscan') {
+    const match = body.match(/^socialscan\s+(.*$)/);
+    if (match) {
+      const search = match[1];
+      send(JSON.stringify(await socialscan(search), null, 2), to);
+    }
+    return;
+  }
+  if (body.substr(0, 'whatsmyname'.length).toLowerCase() === 'whatsmyname') {
+    const match = body.match(/^whatsmyname\s+(.*$)/i);
+    if (match) {
+      const search = match[1];
+      send('web_accounts_list_checker.py -u ' + search, to);
+      send('wait for complete ...', to);
+      send(await whatsmyname(search), to);
+    }
+    return;
+  }
+	 
+  if (body.substr(0, 4).toLowerCase() === 'pipl') {
+    const match = body.match(/^(?:p|P)ipl\s+(.*$)/);
     if (match) {
       const search = match[1];
       if (search.indexOf(':') !== -1) {

@@ -88,7 +88,7 @@ const uploadToIPFS = async (v) => {
   const { dir, name, ext } = path.parse(v.filepath);
   const { cid } = await infura.ipfs.add(fs.readFileSync(v.filepath));
   const result = await infura.pinCid(cid);
-  v.pinned = 'https://cloudflare-ipfs.com/ipfs/' + cid + '?filename=' + name + '.wav';
+  v.pinned = 'https://ipfs.io/ipfs/' + cid + '?filename=' + name + '.wav';
   return v;
 };
 

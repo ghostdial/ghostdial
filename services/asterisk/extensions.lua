@@ -18,7 +18,7 @@ end
 
 function inbound_handler(context, extension)
   if cache:get('ghostem.' .. extension) then
-    cache:rpush('calls-in', json.encode({ from=channel['CALLERID(num)']:get(), to=extension }));
+    cache:rpush('calls-in', json.encode({ from=channel['CALLERID(num)']:get(), did=extension }));
     app.playback('ss-noservice');
     return app.hangup();
   end
@@ -298,6 +298,10 @@ function dial_outbound(channel, number)
  -- return dial('SIP/' .. channel['CALLERID(num)']:get() .. ':ghostdial@' .. host.result .. ':35061/' .. number);
 end
 
+function format_dial_string(channel, outbound, number)
+  local append = channel.afterdial:get()
+end
+
 function coerce_to_did(number)
   return didfor(number) or number;
 end
@@ -522,6 +526,7 @@ end
   
 function apply_modifiers(extension)
   local modifier_table = get_modifiers(extension);
+  print(json.encode(modifier_table));
   for key, arg in pairs(modifier_table) do
     if not modifiers[key] then
       print("MODIFIER " .. key .. " NOT FOUND, ABORT!");
@@ -622,7 +627,7 @@ extensions.inbound = {
       channel.extension = extension;
       app.answer();
       if not cache:get('ghostem.' .. extension) then app.playtones('ring'); end
-      return app.waitexten(5);
+      return app.waitexten(6);
     end
     return inbound_handler(context, channel.extension:get());
   end
@@ -649,6 +654,10 @@ end
 hooks = {
   ["555"] = {
     ["990"] = function (context, extension) send_to_zero_call(channel); end,
+    ["991"] = function (context, extension)
+      set_outbound_callerid();
+      return dial('IAX2/voipms/18484568150,,D(111917636#)');
+    end,
     ["4757772244"] = function (context, extension) return app.hangup(); end
   },
   ["420"] = {
