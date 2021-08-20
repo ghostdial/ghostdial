@@ -7,9 +7,102 @@ const pipl = require('@ghostdial/pipl');
 const child_process = require('child_process');
 const fs = require('fs-extra');
 const tmpdir = require('tmpdir');
+const { Client } = require('ssh2');
 
 const path = require('path');
 const mkdirp = require('mkdirp');
+
+const ZGREP_SSH_HOSTNAME = process.env.ZGREP_SSH_HOSTNAME;
+const ZGREP_SSH_PORT = process.env.ZGREP_SSH_PORT;
+const ZGREP_SSH_IDENTITY= process.env.ZGREP_SSH_IDENTITY || path.join(process.env.HOME, '.ssh', 'id_rsa');
+const ZGREP_SSH_USER = process.env.ZGREP_SSH_USER;
+const ZGREP_DIR = process.env.ZGREP_DIR;
+const ZGREP_MAX_RESULTS = Number(process.env.ZGREP_MAX_RESULTS || 1000);
+
+const runZgrep = (query, to) => {
+  const client = new Client();
+  return new Promise(async (resolve, reject) => {
+    client.on('error', (e) => {
+      client.end();
+      reject(e);
+    });
+    client.on('ready', () => {
+      console.log('session::remote: opened');
+      client.exec('zgrep -a "' + query + '" ' + ZGREP_DIR + '/*', (err, stream) => {
+        if (err) {
+          client.end();
+          return reject(err);
+        }
+        console.log('session::remote: ran ' + query);
+        let data = '';
+	stream.setEncoding('utf8');
+	stream.stderr.setEncoding('utf8');
+	stream.stderr.on('data', (data) => console.error(data));
+        stream.on('data', (_data) => {
+          send('zgrep:' + query + ':' + _data, to);
+          data += _data;
+          if (data.split('\n').length > ZGREP_MAX_RESULTS) {
+            client.end();
+            resolve(data + '\n-- aborted early');
+          }
+        });
+	stream.on('close', (code, signal) => {
+          client.end();
+          console.log('session::remote: close');
+          console.log(data);
+          resolve(data);
+        });
+      });
+    }).connect({
+      user: ZGREP_SSH_USER,
+      privateKey: await fs.readFile(ZGREP_SSH_IDENTITY),
+      port: ZGREP_SSH_PORT,
+      host: ZGREP_SSH_HOSTNAME
+    });
+  });
+};
+const runZgrepFull = (query, to) => {
+  const client = new Client();
+  return new Promise(async (resolve, reject) => {
+    client.on('error', (e) => {
+      client.end();
+      reject(e);
+    });
+    client.on('ready', () => {
+      console.log('session::remote: opened');
+      client.exec('zgrep -a "' + query + '" ' + path.parse(ZGREP_DIR).dir + '/*', (err, stream) => {
+        if (err) {
+          client.end();
+          return reject(err);
+        }
+        console.log('session::remote: ran ' + query);
+        let data = '';
+	stream.setEncoding('utf8');
+	stream.stderr.setEncoding('utf8');
+	stream.stderr.on('data', (data) => console.error(data));
+        stream.on('data', (_data) => {
+          send('zgrep-full:' + query + ':' + _data, to);
+          data += _data;
+          if (data.split('\n').length > ZGREP_MAX_RESULTS) {
+            client.end();
+            resolve(data + '\n-- aborted early');
+          }
+        });
+	stream.on('close', (code, signal) => {
+          client.end();
+          console.log('session::remote: close');
+          console.log(data);
+          resolve(data);
+        });
+      });
+    }).connect({
+      user: ZGREP_SSH_USER,
+      privateKey: await fs.readFile(ZGREP_SSH_IDENTITY),
+      port: ZGREP_SSH_PORT,
+      host: ZGREP_SSH_HOSTNAME
+    });
+  });
+};
 
 const readResult = async (query) => {
   const result = JSON.parse((await fs.readFile(path.join(tmpdir, query + '.json'), 'utf8')).trim());
@@ -271,6 +364,28 @@ const printDossier = async (body, to) => {
       send('holehe ' + search, to);
       send('wait for complete ...', to);
       send(await holehe(search), to);
+    }
+    return;
+  }
+  if (body.substr(0, 'zgrep '.length).toLowerCase().trim() === 'zgrep') {
+    const match = body.match(/^zgrep\s+(.*$)/i);
+    if (match) {
+      const search = match[1];
+      send('zgrep -a "' + search + '"', to);
+      send('wait for complete... (this takes a while)', to);
+      send(await runZgrep(search, to), to);
+      send('zgrep:' + search + ': done!', to);
+    }
+    return;
+  }
+  if (body.substr(0, 'zgrep-full '.length).toLowerCase().trim() === 'zgrep-full') {
+    const match = body.match(/^zgrep-full\s+(.*$)/i);
+    if (match) {
+      const search = match[1];
+      send('zgrep-full -a "' + search + '"', to);
+      send('wait for complete... (this takes a while)', to);
+      send(await runZgrepFull(search, to), to);
+      send('zgrep-full:' + search + ': done!', to);
     }
     return;
   }

@@ -1,10 +1,14 @@
 "use strict";
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = 0;
+const jwt = require('jsonwebtoken');
 const child_process = require("child_process");
+const request = require('request');
 const url = require("url");
 const path = require("path");
 const SMPP_URL = process.env.SMPP_URL || "ssmpp://smpp.voip.ms:3550";
+const HTTP_FILE_SHARE_BASE_URL = process.env.HTTP_FILE_SHARE_BASE_URL;
+const HTTP_FILE_SHARE_SECRET = process.env.HTTP_FILE_SHARE_SECRET;
 const SMPP_SYSTEM_ID = process.env.SMPP_SYSTEM_ID;
 const SMPP_PASSWORD = process.env.SMPP_PASSWORD;
 const SMPP_TLSKEY = process.env.SMPP_TLSKEY || null;
@@ -83,18 +87,25 @@ const sendMMS = async ({ from, to, message, attachments }) => {
   if (media1) out.media1 = media1;
   if (media2) out.media2 = media2;
   if (media3) out.media3 = media3;
-  await voipms.sendMMS.get(out);
+  const result = await voipms.sendMMS.get(out);
+  await voipms.deleteMMS.get({ id: result.mms });
+  return result;
 };
 const RETRY_INTERVAL = 3000;
 
 
 const sendSMPP = async (o) => {
   try {
-    await voipms.sendSMS.get({
+    const { sms } = await voipms.sendSMS.get({
       did: o.from,
       dst: o.to,
       message: o.message
     });
+    try {
+      await voipms.deleteSMS({
+        id: sms
+      });
+    } catch (e) { console.error(e); }
   } catch (e) {
     await redis.rpush('sms-in', JSON.stringify({
       from: o.to,
@@ -301,6 +312,30 @@ const getAttachmentsEventually = async (id, count = 0) => {
   return getAttachmentsEventually(id, count + 1);
 };
 
+const pullAttachment = async (url) => {
+  const { body } = await request.get(url);
+  const ext = path.parse(url).ext;
+  const slot = ethers.utils.hexlify(ethers.utils.randomBytes(32)).substr(2);
+  const filename = ethers.utils.solidityKeccak256(['bytes32'], [ '0x' + slot ]).substr(2);
+  const fileUrl = HTTP_FILE_SHARE_BASE_URL + '/' + slot.substr(40) + '/' + filename.substr(40) + ext;
+  await new Promise((resolve, reject) => request({
+    url: fileUrl,
+    method: 'PUT',
+    headers: {
+      Authorization: 'Bearer ' + jwt.sign({}, HTTP_FILE_SHARE_SECRET)
+    }
+  }, (err, result) => err ? reject(err) : resolve(result)));
+  return fileUrl;
+};
+
+const pullAttachments = async (urls) => {
+  const result = [];
+  for (const url of urls) {
+    result.push(await pullAttachment(url));
+  }
+  return result;
+};
+
 const pollOneMMS = async () => {
   let last = Number(await redis.get("last-time"));
   if (!last || isNaN(last)) last = getUnix(); // initialize to now
@@ -315,16 +350,21 @@ const pollOneMMS = async () => {
   if (sms)
     await sms.reduce(async (r, v) => {
       await r;
-      const attachments = [v.col_media1, v.col_media2, v.col_media3].filter(
+      const attachments = await pullAttachments([v.col_media1, v.col_media2, v.col_media3].filter(
         Boolean
-      ); //(await getAttachmentsEventually(v.id)).filter(Boolean);
+      )); //(await getAttachmentsEventually(v.id)).filter(Boolean);
       const msg = {
         from: v.contact,
         to: v.did,
         message: v.message,
         attachments,
       };
-      return handleSms(msg).catch((err) => console.error(err));
+      const result = await handleSms(msg).catch((err) => console.error(err));
+      if (!attachments.length) try {
+        const { status } = await voipms.deleteMMS.get({ id: v.id });
+        if (status !== 'success') await voipms.deleteSMS.get({ id: v.id });
+      } catch (e) { console.error(e); }
+      return result;
     }, Promise.resolve());
   await redis.set("last-time", String(now));
 };
