@@ -49,6 +49,8 @@ app.put(
 	const measure = new PassThrough();
 	const toEncrypt = new PassThrough();
         measure.on('data', (chunk) => {
+		console.log('chunk', chunk);
+		console.log('chunk.length', chunk.length);
           contentLength += chunk.length;
         });
 	req.pipe(measure);
@@ -67,6 +69,7 @@ app.put(
         );
         console.log(JSON.stringify(result));
         console.log("uploaded " + result.cid);
+	      console.log('contentLength', contentLength);
         await redis.set(req.params.slot, result.cid);
         await redis.set(req.params.slot + '.length', contentLength);
         res.sendStatus(201);
@@ -92,42 +95,41 @@ app.get("/upload/:slot/:filename", (req, res) => {
     console.log("cid: " + cid);
     const decryptStream = crypto.createDecipheriv(algorithm, secret, secret.slice(0, 16));
     let shouldLoadFromFs;
+	  /*
     try {
-      const head = await new Promise((resolve, reject) => request.head('https://ipfs.io/ipfs/' + cid + '?filename=' + req.params.filename, (err, result) => err ? reject(err) : resolve(result)));
-      const contentLength = Number(head.headers['content-length'] || head.headers['Content-Length'] || head.headers['Content-length']);
-      if (isNaN(contentLength) || contentLength === 0) shouldLoadFromFs = true;
+//      const head = await new Promise((resolve, reject) => request.head('https://cloudflare-ipfs.com/ipfs/' + cid + '?filename=' + req.params.filename, (err, result) => err ? reject(err) : resolve(result)));
+ //     const contentLength = Number(head.headers['content-length'] || head.headers['Content-Length'] || head.headers['Content-length']);
+  //    if (isNaN(contentLength) || contentLength === 0) shouldLoadFromFs = true;
     } catch (e) {
-      console.error(e);
-      shouldLoadFromFs = true;
+   //   console.error(e);
+    //  shouldLoadFromFs = true;
     }
+    */
     const fullPath = path.join(HTTP_FILE_SHARE_DIRECTORY, filename);
     res.setHeader('content-type', mime.lookup(req.params.filename));
     res.setHeader('content-length', await redis.get(req.params.slot + '.length'));
-    if (shouldLoadFromFs) {
-      if (!await fs.exists(fullPath)) shouldLoadFromFs = false;
-    }
-    if (shouldLoadFromFs) {
-      console.log('loading from fs ...');
+    const stream = request({
+      url: 'https://cloudflare-ipfs.com/ipfs/' + cid + '?filename=' + req.params.filename,
+      method: 'GET'
+    });
+    stream.on('error', (err) => {
       const fileStream = fs.createReadStream(fullPath);
       fileStream.on('error', (err) => {
         console.error(err);
         res.end();
       });
       fileStream.pipe(decryptStream).pipe(res);
-    } else {
-      const stream = request({
-        url: 'https://ipfs.io/ipfs/' + cid + '?filename=' + req.params.filename,
-        method: 'GET'
-      });
-      stream.on('error', (err) => {
-        console.error(err);
-      });
-      stream.pipe(decryptStream).pipe(res);
+    });
+    stream.pipe(decryptStream).pipe(res);
+    stream.on('end', async () => {
       await new Promise((resolve) => setTimeout(resolve, TIMEOUT));
       try {
         if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
       } catch (e) { console.error(e); }
-    }
+      if (shouldLoadFromFs) {
+        if (!await fs.exists(fullPath)) shouldLoadFromFs = false;
+      }
+    });
   })().catch((err) => console.error(err));
 });
 
