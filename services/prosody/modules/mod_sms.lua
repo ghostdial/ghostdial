@@ -267,6 +267,7 @@ function presence_stanza_handler(origin, stanza)
 
 		-- Do roster item exchange: send roster items to client
 		-- SMS user presence
+        origin.send(st.presence({ to=from_bjid, from=to_bjid }));
 	if pres.type == 'subscribe' then
 		origin.send(st.presence({to=from_bjid, from=component_host, type="subscribed" }));
 		--RIGHTHERE		

@@ -335,8 +335,8 @@ function dialsip(channel, to, on_failure)
   if not is_blacklisted(channel, channel.callerid_num:get()) and not is_voip(channel.callerid_num:get())  then
     app.answer();
     set_last_cid(channel, channel.callerid_num:get(), channel.did:get());
-    local status = dial(ring_group(to), 20);
-    if status == "CHANUNAVAIL" or status == "NOANSWER" then status = pstn_fallback_dial(channel); end
+    local status = channel.skip:get() ~= 'sip' and dial(ring_group(to), 20) or 'CHANUNAVAIL';
+    if status == "CHANUNAVAIL" or status == "NOANSWER" and channel.skip:get() ~= "pstn" then status = pstn_fallback_dial(channel); end
     if status == "CHANUNAVAIL" or status == "BUSY" or status == "CONGESTED" or status == "NOANSWER" then
       return send_to_voicemail(channel, to)
     else
@@ -462,6 +462,11 @@ local modifiers = {
       cache:set('override.' .. channel.ext:get(), arg);
     end
   end,
+  ["2"] = function (arg)
+    if arg == '0' then channel.skip = 'pstn';
+    elseif arg == '1' then channel.skip = 'sip';
+    end
+  end,
   ["7"] = function (arg)
     print("DRY RUN");
     channel.dry_run = 'true';
@@ -525,6 +530,7 @@ function strip_out_modifiers(extension)
 end
   
 function apply_modifiers(extension)
+  print('EXTENSION WITH MODIFIERS: ' .. extension);
   local modifier_table = get_modifiers(extension);
   print(json.encode(modifier_table));
   for key, arg in pairs(modifier_table) do
@@ -603,7 +609,7 @@ extensions.authenticated_internal = {
     end,
     ["_**X."] = function (context, extension)
       local extension_to_save, extension_record = extension:match('%*%*([^%*]+)%*(.*)$');
-      set_custom_extension(ext, extension_to_save, extension_record);
+      set_custom_extension(channel.ext:get(), extension_to_save, extension_record);
       return app.hangup();
     end
   }; 

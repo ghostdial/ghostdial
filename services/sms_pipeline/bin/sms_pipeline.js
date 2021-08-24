@@ -367,7 +367,7 @@ const pollOneMMS = async () => {
         return await pull(r, (await voipms.getMMS.get({ id: v.id })).sms[0]);
       }
       const result = await handleSms(msg).catch((err) => console.error(err));
-      if (!attachments.length) try {
+      try {
         const { status } = await voipms.deleteMMS.get({ id: v.id });
         if (status !== 'success') await voipms.deleteSMS.get({ id: v.id });
       } catch (e) { console.error(e); }
