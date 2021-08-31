@@ -113,20 +113,20 @@ function activate_simple_mobile(callerid, simnumber, airtime, zipcode, pin)
   local payload = simnumber .. ':' .. airtime .. ':' .. pin .. ':' .. zipcode;
   return dial(DEFAULT_OUTBOUND .. '/18778787908', 20, 'U(activate_simple_mobile^' .. payload .. ')');
 end
-
-function data247_carriertype(num)
+function twilio_carriertype(num)
   if #num < 10 then return false, 'I'; end
   local response = {};
   local err, status = https.request({
-    method="POST",
-    url='https://api.data247.com/v3.0?key=' .. os.getenv('DATA247_API_KEY') .. '&api=CU&out=json&phone=' .. num .. '&addfields=type,last_port_date',
+    method="GET",
+    url="https://" .. os.getenv("TWILIO_ACCOUNT_SID") .. ":" .. os.getenv("TWILIO_AUTH_TOKEN") .. "@lookups.twilio.com/v1/PhoneNumbers/+" .. (#num == 11 and num or "1" .. num) .. "?Type=carrier",
     sink=ltn12.sink.table(response)
   });
-  return status ~= 200, status == 200 and (((json.decode(response[1]).response or {}).results or {})[1] or {}).type or 'V';
+  local carrier_type = json.decode(response[1]).carrier.type;
+  return false, carrier_type == 'voip' and 'V' or carrier_type == 'mobile' and 'M' or 'L';
 end
 
 function is_voip(num)
-  local err, result = data247_carriertype(num);
+  local err, result = twilio_carriertype(num);
   print(num .. 'is a number of type ' .. result);
   if cache:get('voip-passthrough.' .. channel.sipuser:get()) then return false; end
   if err then

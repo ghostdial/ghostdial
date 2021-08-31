@@ -27,7 +27,7 @@ const to = Date.now() - 1000*60*60*24*0;
 
 const purgeAll = async () => {
   const sms = await voipms.getMMS.get({
-    type: 0,
+    type: 1,
     from: moment(new Date(from)).format('YYYY-MM-DD'),
     to: moment(new Date(to)).format('YYYY-MM-DD'),
     all_messages: 1

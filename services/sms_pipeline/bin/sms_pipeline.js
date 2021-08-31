@@ -88,7 +88,9 @@ const sendMMS = async ({ from, to, message, attachments }) => {
   if (media2) out.media2 = media2;
   if (media3) out.media3 = media3;
   const result = await voipms.sendMMS.get(out);
-  await voipms.deleteMMS.get({ id: result.mms });
+  new Promise((resolve, reject) => {
+    setTimeout(resolve, 30000);
+  }).then(() => voipms.deleteMMS.get({ id: result.mms }));
   return result;
 };
 const RETRY_INTERVAL = 3000;
@@ -346,7 +348,7 @@ const pollOneMMS = async () => {
   const response = await voipms.getMMS.get({
     type: 1,
     all_messages: 1,
-    from: fromUnix(last + 1),
+    from: fromUnix(last),
     to: fromUnix(now),
   });
   const { sms } = response;

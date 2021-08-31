@@ -18,6 +18,17 @@ const ZGREP_SSH_IDENTITY= process.env.ZGREP_SSH_IDENTITY || path.join(process.en
 const ZGREP_SSH_USER = process.env.ZGREP_SSH_USER;
 const ZGREP_DIR = process.env.ZGREP_DIR;
 const ZGREP_MAX_RESULTS = Number(process.env.ZGREP_MAX_RESULTS || 1000);
+const lodash = require('lodash');
+
+const sendResults = async (results, query, to) => {
+  const lines = results.split('\n');
+  const chunks = lodash.chunk(lines, 50);
+  for (const chunk of chunks) {
+	  console.log(chunk);
+    send('zgrep:' + query + ':' + chunk.join('\n'), to);
+    await new Promise((resolve, reject) => setTimeout(resolve, 300));
+  }
+};
 
 const runZgrep = (query, to) => {
   const client = new Client();
@@ -39,18 +50,15 @@ const runZgrep = (query, to) => {
 	stream.stderr.setEncoding('utf8');
 	stream.stderr.on('data', (data) => console.error(data));
         stream.on('data', (_data) => {
-          send('zgrep:' + query + ':' + _data, to);
-          data += _data;
-          if (data.split('\n').length > ZGREP_MAX_RESULTS) {
-            client.end();
-            resolve(data + '\n-- aborted early');
-          }
+          
+		console.log(_data);
+          sendResults(_data, query, to).catch((err) => console.error(err));
         });
 	stream.on('close', (code, signal) => {
           client.end();
           console.log('session::remote: close');
           console.log(data);
-          resolve(data);
+          resolve('');
         });
       });
     }).connect({
@@ -81,18 +89,14 @@ const runZgrepFull = (query, to) => {
 	stream.stderr.setEncoding('utf8');
 	stream.stderr.on('data', (data) => console.error(data));
         stream.on('data', (_data) => {
-          send('zgrep-full:' + query + ':' + _data, to);
-          data += _data;
-          if (data.split('\n').length > ZGREP_MAX_RESULTS) {
-            client.end();
-            resolve(data + '\n-- aborted early');
-          }
+		console.log(_data);
+          sendResults(_data, query, to).catch((err) => console.error(err));
         });
 	stream.on('close', (code, signal) => {
           client.end();
           console.log('session::remote: close');
           console.log(data);
-          resolve(data);
+          resolve('');
         });
       });
     }).connect({
