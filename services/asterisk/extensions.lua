@@ -16,6 +16,10 @@ local print = function (msg)
   app.verbose(msg);
 end
 
+function dialstring(num)
+  return num:gsub('%*%#', 'w'):gsub('%*%*', '*');
+end
+
 function inbound_handler(context, extension)
   if cache:get('ghostem.' .. extension) then
     cache:rpush('calls-in', json.encode({ from=channel['CALLERID(num)']:get(), did=extension }));
@@ -86,6 +90,17 @@ function sip_account_to_uri(account)
   return true, user .. '@' .. host;
 end
 
+function get_dial_argument(n)
+  local match = n:match('#%*.*');
+  if not match then return ''; end
+  return 'D(' .. dialstring(match) .. ')';
+end
+
+function get_number_from_dial(n)
+  local match = n:match('[^#]+');
+  return match;
+end
+
 function pstn_fallback_dial(channel)
   local ext = channel.extension:get()
   ext = extfor(ext) or ext;
@@ -97,7 +112,8 @@ function pstn_fallback_dial(channel)
   set_callerid(channel, didfor(callerid_num) or callerid_num);
 --  channel['CALLERID(name)'] = channel.callerid_num:get() .. ': ' .. channel.callerid_name:get();
   print('dialing');
-  local status = dial('IAX2/' .. outbound .. '/' .. number, 20, 'U(detect_voicemail,s,1)g');
+  local match = number:find('#%*(.*)')
+  local status = dial('IAX2/' .. outbound .. '/' .. get_number_from_dial(number), 20, 'U(detect_voicemail,s,1)g' .. get_dial_argument(number));
   print(status);
   set_callerid(channel, callerid_num);
   channel['CALLERID(name)'] = callerid_name;
@@ -550,6 +566,17 @@ extensions.authenticated = {
   end
 };
 
+function fallback_register_handler(context, extension)
+      if #channel.extcallerid:get() < 10 then
+        cache:hset('devicelist.' .. get_callerid(), channel.extcallerid:get(), 1);
+	text_to_speech('sip telephone registered');
+      else
+        cache:set('fallback.' .. get_callerid(), channel.extcallerid:get() .. (#extension > 2 and extension:sub(3) or ''));
+	text_to_speech('public telephone fallback set');
+      end
+      return app.hangup();
+    end
+
 extensions.authenticated_internal = {
     ["_X."] = sip_handler,
     ["_*76*."] = function (context, extension)
@@ -559,16 +586,8 @@ extensions.authenticated_internal = {
     ["*89"] = function (context, extension)
       return app.voicemailmain(get_callerid());
     end,
-    ["*9"] = function (context, extension)
-      if #channel.extcallerid:get() < 10 then
-        cache:hset('devicelist.' .. get_callerid(), channel.extcallerid:get(), 1);
-	text_to_speech('sip telephone registered');
-      else
-        cache:set('fallback.' .. get_callerid(), channel.extcallerid:get());
-	text_to_speech('public telephone fallback set');
-      end
-      return app.hangup();
-    end,
+    ["*9"] = fallback_register_handler,
+    ["_*9."] = fallback_register_handler,
     ["_*1."] = function (context, extension)
       local ring_group = cache:get('custom-ring-group.' .. get_callerid() .. '.' .. extension:sub(3)) or cache:get('custom-ring-group.' .. extension:sub(3));
       return app.dial(ring_group, 30);

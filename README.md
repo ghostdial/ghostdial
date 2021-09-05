@@ -30,7 +30,25 @@ On your messaging app, you can message other ghostdial servers number@other.host
 
 # Usage from a cellphone
 
-You can use ghostdial even with a flip phone without mobile data. You call the number for your main ghostdial service line, and when you get a dialtone, you can dial your extension, followed by your voicemail PIN, followed by the extension or number you want to reach. Everything that works from the SIP app can be accessed this way via your extension by dialing in and entering your extension and PIN first in the sequence you want to dial.
+You can use ghostdial even with a flip phone without mobile data. You call your own ghost number, and as soon as you hear ringing, you dial # to get to a dialtone on the internal system
+
+You must dial your extension + your PIN + the extension you want to reach. For example, if my public number is 3055551234 and I want to reach my friend at extension 555, and if my extension is 444 and PIN is 3221, I would dial
+
+3055551234,#,4443221555
+
+Where the , indicates a 2s wait period. Note that on mobile phones or even many flip phones, there is an option in the dialer to add a 2s wait so you can put this comma in in your dial directly to avoid having to rush to input the tones after the call to your public number connects.
+
+To dial using your public number to a regular phone number (let's use 3051235432 as an example) it works similarly
+
+3055551234,#,44432213051235432
+
+If you have multiple numbers, and you want to use a specific one, you will dial the number you want to dial out from followed by the number you want to reach. Say the number I want to use is 3051112222 and I want to reach 3051235432. I Would dial
+
+3055551234,#,444322130511122223051235432
+
+It is a long dial, but it works!
+
+Everything that works from the SIP app can be accessed this way via your extension by dialing in and entering your extension and PIN first in the sequence you want to dial on the internal system.
 
 The built-in extensions are:
 
