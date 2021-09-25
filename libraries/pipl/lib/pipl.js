@@ -20,4 +20,21 @@ async function search(o) {
   })).body);
 }
 
+async function personSearch(o) {
+  return JSON.parse((await fetch({
+    method: 'GET',
+    url: url.format({
+      hostname: BASE_URL,
+      protocol: 'https:',
+      pathname: '/search'
+    }),
+    qs: {
+      person: JSON.stringify(o),
+      key: process.env.PIPL_API_KEY
+    }
+  })).body);
+}
+
 module.exports.search = search;
+
+module.exports.personSearch = personSearch;

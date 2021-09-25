@@ -200,7 +200,6 @@ function handle_message(msg)
 end
 
 function iq_disco_info(stanza)
-    module:log("info", "Disco info triggered");
     local from = {};
     from.node, from.host, from.resource = jid_split(stanza.attr.from);
     local bjid = from.node.."@"..from.host;
@@ -223,7 +222,6 @@ function iq_disco_info(stanza)
 end
 
 function iq_roster_push(origin, stanza)
-	module:log("info", "Sending Roster iq");
 	local from = {}
 	from.node, from.host, from.resource = jid_split(stanza.attr.from);
 	local from_bjid = nil;
@@ -243,8 +241,6 @@ function iq_roster_push(origin, stanza)
 end
 
 function presence_stanza_handler(origin, stanza)
-	module:log("info", "Presence handler triggered");
-	module:log('info', stanza:pretty_print());
 	local to = {};
 	local from = {};
 	local pres = {};
@@ -286,11 +282,9 @@ function sms_event_handler(event)
   if found then
     local node, host = jid_split(event.stanza.attr.from);
     local bjid = node .. '@' .. host;
-    module:log('info', 'initializing: ' .. bjid);
     smsuser:initialize(bjid);
   end
   local stanza, origin = event.stanza, event.origin;
-  module:log("debug", "Received stanza: "..stanza:pretty_print());
   local to_node, to_host, to_resource = jid_split(stanza.attr.to);
   if to_node == nil then
     local type = stanza.attr.type;
@@ -303,7 +297,6 @@ end
 
 function iq_handle(event)
         local origin, stanza = event.origin, event.stanza;
-	module:log("info", "Received stanza: "..stanza:pretty_print());
 	local to_node, to_host, to_resource = jid_split(stanza.attr.to);
 
 	-- Handle component internals (stanzas directed to component host, mainly iq stanzas)
@@ -346,13 +339,11 @@ end
 
 function message_handle(event)
   local stanza, origin = event.stanza, event.origin;
-  module:log('info', tostring(event.stanza));
   message_stanza_handler(event);
 end
 
 function confirm_message_delivery(event)
 	local reply = st.message({ type='chat', from=event.stanza.attr.to, to=event.stanza.attr.from or component_host, id=uuid.generate() }):tag('received', { id=event.stanza.attr.id, xmlns = "urn:xmpp:receipts" }):up();
-	module:log('info', tostring(reply));
 	event.origin.send(reply);
 	return true;
 end
@@ -382,9 +373,7 @@ function message_stanza_handler(event)
     x = stanza:get_child('x', 'jabber:x:oob'),
     request_receipt = stanza:get_child('request', 'urn:xmpp:receipts')
   };
-  module:log('info', json.encode(msg));
   if msg.request_receipt then
-    module:log('info', 'confirming message delivery');
     confirm_message_delivery(event);
   end
   --[[

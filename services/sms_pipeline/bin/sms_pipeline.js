@@ -96,7 +96,7 @@ const sendMMS = async ({ from, to, message, attachments }) => {
 const RETRY_INTERVAL = 3000;
 
 
-const sendSMPP = async (o) => {
+const sendSMPP = async (o, tries = 0) => {
   try {
     const { sms } = await voipms.sendSMS.get({
       did: o.from,
@@ -109,6 +109,11 @@ const sendSMPP = async (o) => {
       });
     } catch (e) { console.error(e); }
   } catch (e) {
+    console.error(e);
+    if (tries < 5) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      return await sendSMPP(o, tries + 1);
+    }
     await redis.rpush('sms-in', JSON.stringify({
       from: o.to,
       to: o.from,
@@ -345,11 +350,12 @@ const pollOneMMS = async () => {
   let last = Number(await redis.get("last-time"));
   if (!last || isNaN(last)) last = getUnix(); // initialize to now
   const now = getUnix();
+  const to = Math.min(last + 60*60, now);
   const response = await voipms.getMMS.get({
     type: 1,
     all_messages: 1,
     from: fromUnix(last),
-    to: fromUnix(now),
+    to: fromUnix(to),
   });
   const { sms } = response;
   if (sms)
@@ -365,6 +371,8 @@ const pollOneMMS = async () => {
         attachments,
       };
       if (msg.attachments.length === 0 && msg.message === '') {
+        console.log('Must pull again:');
+        console.log(util.inspect(msg, { colors: true, depth: 5 }));
         await new Promise((resolve) => setTimeout(resolve, 1500));
         return await pull(r, (await voipms.getMMS.get({ id: v.id })).sms[0]);
       }
@@ -375,7 +383,7 @@ const pollOneMMS = async () => {
       } catch (e) { console.error(e); }
       return result;
     }, Promise.resolve());
-  await redis.set("last-time", String(now));
+  await redis.set("last-time", String(to));
 };
 
 const startPollingForMMS = async () => {

@@ -153,7 +153,7 @@ function is_voip(num)
 end
 
 function is_blacklisted(channel, from)
-  return (cache:get('blacklist.' .. from) or cache:get('blacklist.sipuser:' .. channel.sipuser:get() .. '.' .. from) or cache:get('blacklist.sipuser:' .. channel.sipuser:get() .. '.did:' .. channel.did:get() .. '.' .. from));
+  return (cache:get('blacklist.' .. from) or cache:get('blacklist.' .. channel.extension:get() .. '.' .. from) or cache:get('blacklist.' .. channel.did:get() .. '.' .. channel.callerid_num:get() .. '.' .. from));
 end
 
 function dial(...)
@@ -352,6 +352,7 @@ function dialsip(channel, to, on_failure)
     app.answer();
     set_last_cid(channel, channel.callerid_num:get(), channel.did:get());
     local status = channel.skip:get() ~= 'sip' and dial(ring_group(to), 20) or 'CHANUNAVAIL';
+    channel.skip = "pstn";
     if status == "CHANUNAVAIL" or status == "NOANSWER" and channel.skip:get() ~= "pstn" then status = pstn_fallback_dial(channel); end
     if status == "CHANUNAVAIL" or status == "BUSY" or status == "CONGESTED" or status == "NOANSWER" then
       return send_to_voicemail(channel, to)
