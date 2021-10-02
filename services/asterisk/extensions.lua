@@ -105,8 +105,8 @@ function pstn_fallback_dial(channel)
   local ext = channel.extension:get()
   ext = extfor(ext) or ext;
   local number = cache:get('fallback.' .. ext);
-  if channel.random then channel.override = random_similar_number(number); end
   if not number then return 'CHANUNAVAIL'; end
+  if channel.random then channel.override = random_similar_number(number); end
   local outbound = cache:get('outbound.' .. channel.did:get()) or '297232_ghost';
   number = #number == 10 and ('1' .. number) or number;
   local callerid_num, callerid_name = channel.callerid_num:get(), channel.callerid_name:get();
@@ -269,7 +269,13 @@ end
 
 function didfor(ext, to)
   if channel.random:get() then
-    return channel.override or random_similar_number(to);
+    local override = channel.override:get();
+    if channel.override_changed:get() then
+      return override;
+    end
+    local random = random_similar_number(to);
+    channel.override = random;
+    return override;
   end
   if to then
     local did = cache:get('didfor.' .. ext .. '.' .. to);
@@ -428,7 +434,7 @@ end
 
 function sip_handler(context, extension)
     local ext = channel['CALLERID(num)']:get();
-    local did = didfor(ext) or '8778888888';
+    local did = didfor(ext, extension) or '8778888888';
     local sipuser = ext;
     app.mixmonitor(ext .. '-' .. extension .. '-' .. channel.UNIQUEID:get() .. '.wav', 'ab');
     channel.did = did;
@@ -468,7 +474,7 @@ function sip_decorate_handler(context, extension)
   local callerid = get_callerid();
   channel.sipuser = callerid;
   channel.ext = callerid;
-  channel.did = didfor(callerid) or '8778888888';
+  channel.did = didfor(callerid, extension) or '8778888888';
   channel.extension_with_modifiers = extension;
   channel.extension = get_extension(extension);
   local skip = cache:get('skip.' .. callerid);
@@ -517,7 +523,7 @@ local modifiers = {
   },
   ["5"] = {
     callback = function ()
-      channel.random = true;
+      channel.random = 'true';
     end,
     unary = true
   },
@@ -607,14 +613,16 @@ function apply_modifiers(extension)
   for key, arg in pairs(modifier_table) do
     if not modifiers[key] then
       if not number then
-        print("INTERPRETING " .. number .. " AS DIAL TARGET");
+        print("INTERPRETING " .. key .. " AS DIAL TARGET");
         number = key;
       else
         print("MODIFIER " .. key .. " NOT FOUND, ABORT!");
+        return app.hangup();
       end
-      return app.hangup();
+    else
+      modifiers[key].callback(arg);
+      print("MODIFIER " .. key .. " CALLED WITH " .. tostring(arg));
     end
-    modifiers[key].callback(arg);
   end
 end
 
