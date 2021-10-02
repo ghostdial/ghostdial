@@ -274,6 +274,7 @@ function random_similar_number(number)
   if result:sub(6, 10) == number:sub(6, 10) then
     return random_similar_number(number);
   end
+  return result;
 end
 
 function didfor(ext, to)
