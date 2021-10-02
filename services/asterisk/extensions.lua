@@ -105,6 +105,7 @@ function emergency_filter(did, cid)
   if cache:get('emergency-passthrough.' .. did .. '.' .. cid) then
     return '877' .. cid:sub(4);
   end
+  return cid;
 end
 
 function pstn_fallback_dial(channel)
@@ -116,7 +117,7 @@ function pstn_fallback_dial(channel)
   local outbound = cache:get('outbound.' .. channel.did:get()) or '297232_ghost';
   number = #number == 10 and ('1' .. number) or number;
   local callerid_num, callerid_name = channel.callerid_num:get(), channel.callerid_name:get();
-  set_callerid(channel, emergency_filter(ext .. '.' .. didfor(callerid_num, ext) or callerid_num));
+  set_callerid(channel, emergency_filter(ext, didfor(callerid_num, ext) or callerid_num));
 --  channel['CALLERID(name)'] = channel.callerid_num:get() .. ': ' .. channel.callerid_name:get();
   print('dialing');
   local match = number:find('#%*(.*)')
