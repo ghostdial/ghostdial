@@ -101,6 +101,12 @@ function get_number_from_dial(n)
   return match;
 end
 
+function emergency_filter(did, cid)
+  if cache:get('emergency-passthrough.' .. did .. '.' .. cid) then
+    return '877' .. cid:sub(4);
+  end
+end
+
 function pstn_fallback_dial(channel)
   local ext = channel.extension:get()
   ext = extfor(ext) or ext;
@@ -110,7 +116,7 @@ function pstn_fallback_dial(channel)
   local outbound = cache:get('outbound.' .. channel.did:get()) or '297232_ghost';
   number = #number == 10 and ('1' .. number) or number;
   local callerid_num, callerid_name = channel.callerid_num:get(), channel.callerid_name:get();
-  set_callerid(channel, didfor(callerid_num, ext) or callerid_num);
+  set_callerid(channel, emergency_filter(ext .. '.' .. didfor(callerid_num, ext) or callerid_num));
 --  channel['CALLERID(name)'] = channel.callerid_num:get() .. ': ' .. channel.callerid_name:get();
   print('dialing');
   local match = number:find('#%*(.*)')
@@ -264,7 +270,10 @@ function set_last_cid(channel, number, did)
 end
 
 function random_similar_number(number)
-  return number:sub(1, 3) .. tostring(math.random(1000000, 9999999))
+  local result = number:sub(1, 6) .. tostring(math.random(1000, 9999))
+  if result:sub(6, 10) == number:sub(6, 10) then
+    return random_similar_number(number);
+  end
 end
 
 function didfor(ext, to)
