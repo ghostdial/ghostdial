@@ -590,16 +590,28 @@ function get_modifiers(extension)
 end
 
 function strip_out_modifiers(extension)
-  return find(to_parts(extension), function (v, k) return not v:match('#') end);
+  local modifier_table = get_modifiers(extension);
+  for k, v in pairs(modifier_table) do
+    if not modifiers[k] then return k; end
+  end
+  print("DIAL TARGET ABSENT .. ABORT");
+  app.hangup();
+  return '';
 end
   
 function apply_modifiers(extension)
   print('EXTENSION WITH MODIFIERS: ' .. extension);
   local modifier_table = get_modifiers(extension);
   print(json.encode(modifier_table));
+  local number = nil;
   for key, arg in pairs(modifier_table) do
     if not modifiers[key] then
-      print("MODIFIER " .. key .. " NOT FOUND, ABORT!");
+      if not number then
+        print("INTERPRETING " .. number .. " AS DIAL TARGET");
+        number = key;
+      else
+        print("MODIFIER " .. key .. " NOT FOUND, ABORT!");
+      end
       return app.hangup();
     end
     modifiers[key].callback(arg);
