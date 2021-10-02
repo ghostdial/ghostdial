@@ -484,12 +484,14 @@ local modifiers = {
       set_custom_extension(channel.ext:get(), arg, remove_modifier(channel.extension_with_modifiers:get(), "*"));
     end,
     unary = false
+  },
   ["0"] = {
     callback = function (arg)
       print("OVERRIDE CALLERID(num) TO " .. arg);
       channel.override = arg;
     end,
     unary = false
+  },
   ["1"] = {
     callback = function (arg)
       print("OVERRIDE AND SAVE CALLERID(num) TO " .. arg);
@@ -600,7 +602,7 @@ function apply_modifiers(extension)
       print("MODIFIER " .. key .. " NOT FOUND, ABORT!");
       return app.hangup();
     end
-    modifiers[key](arg);
+    modifiers[key].callback(arg);
   end
 end
 
