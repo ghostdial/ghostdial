@@ -286,7 +286,7 @@ const handleSms = async (sms) => {
   }
 };
 
-const POLL_INTERVAL = 6000;
+const POLL_INTERVAL = 10000;
 const moment = require("moment");
 
 const OFFSET = 3600 * 4;

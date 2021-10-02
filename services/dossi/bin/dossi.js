@@ -312,6 +312,7 @@ const sendPiplImages = async (fromPipl, to) => {
 };
 
 const printPiplResult = async (search, result, to) => {
+  if (!result.possible_persons) return send('no results found', to);
   result.possible_persons.forEach((v) => {
     delete v["@search_pointer"];
   });
@@ -514,6 +515,7 @@ const printDossier = async (body, to) => {
         return;
       } else if (search.indexOf("@") !== -1) {
         const data = await pipl.search({ email: search });
+	      console.log(data);
         await printPiplResult(search, data, to);
         return;
       } else if (search.match(/\d+/)) {
