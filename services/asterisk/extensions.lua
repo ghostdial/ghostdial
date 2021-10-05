@@ -113,11 +113,11 @@ function pstn_fallback_dial(channel)
   ext = extfor(ext) or ext;
   local number = cache:get('fallback.' .. ext);
   if not number then return 'CHANUNAVAIL'; end
-  if channel.random then channel.override = random_similar_number(number); end
+  if channel.random:get() then channel.override = random_similar_number(number); end
   local outbound = cache:get('outbound.' .. channel.did:get()) or '297232_ghost';
   number = #number == 10 and ('1' .. number) or number;
   local callerid_num, callerid_name = channel.callerid_num:get(), channel.callerid_name:get();
-  set_callerid(channel, emergency_filter(ext, didfor(callerid_num, ext) or callerid_num));
+  set_callerid(channel, emergency_filter(ext, coerce_to_did(callerid_num)) or callerid_num);
 --  channel['CALLERID(name)'] = channel.callerid_num:get() .. ': ' .. channel.callerid_name:get();
   print('dialing');
   local match = number:find('#%*(.*)')
@@ -271,7 +271,7 @@ function set_last_cid(channel, number, did)
 end
 
 function random_similar_number(number)
-  local result = number:sub(1, 6) .. tostring(math.random(1000, 9999))
+  local result = coerce_to_did(number):sub(1, 6) .. tostring(math.random(1000, 9999))
   if result:sub(6, 10) == number:sub(6, 10) then
     return random_similar_number(number);
   end
@@ -284,7 +284,7 @@ function didfor(ext, to)
     if channel.override_changed:get() then
       return override;
     end
-    local random = random_similar_number(to);
+    local random = random_similar_number(to or '8778888888');
     channel.override = random;
     return override;
   end
@@ -350,6 +350,7 @@ function format_dial_string(channel, outbound, number)
 end
 
 function coerce_to_did(number)
+  if #number >= 10 then return number; end
   return didfor(number) or number;
 end
  

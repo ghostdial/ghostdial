@@ -109,7 +109,7 @@ app.get("/upload/:slot/:filename", (req, res) => {
     res.setHeader('content-type', mime.lookup(req.params.filename));
     res.setHeader('content-length', await redis.get(req.params.slot + '.length'));
     const stream = request({
-      url: 'https://cloudflare-ipfs.com/ipfs/' + cid + '?filename=' + req.params.filename,
+      url: 'https://ipfs.io/ipfs/' + cid + '?filename=' + req.params.filename,
       method: 'GET'
     });
     stream.on('error', (err) => {

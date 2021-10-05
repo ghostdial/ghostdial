@@ -263,8 +263,7 @@ const handleSms = async (sms) => {
         }
       }
     }
-    console.log("Got incoming message!");
-    console.log(util.inspect(sms, { colors: true, depth: 2 }));
+    console.log("IN (" + sms.from + " => " + sms.to + ")");
     await insertToDatabase(sms);
     await redis.rpush(SMS_IN_CHANNEL, JSON.stringify(sms));
     const ext = await redis.get("extfor." + sms.to);
@@ -370,7 +369,7 @@ const pollOneMMS = async () => {
         message: v.message,
         attachments,
       };
-      if (msg.attachments.length === 0 && msg.message === '') {
+      if (false && msg.attachments.length === 0 && msg.message === '') {
         console.log('Must pull again:');
         console.log(util.inspect(msg, { colors: true, depth: 5 }));
         await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -413,8 +412,7 @@ const mutateCoerceAttachments = (msg) => {
 const flushOne = async (msg) => {
   if (!msg) return false;
   const decoded = mutateCoerceAttachments(JSON.parse(toString(msg)));
-  console.log("Got outgoing message from Prosody!");
-  console.log(util.inspect(decoded, { colors: true, depth: 2 }));
+  console.log("OUT (" + out.from + " => " + out.to + ")");
   await insertToDatabase(decoded);
   if ((decoded.message || "").length > 160 || decoded.attachments.length)
     await sendMMS(decoded);
