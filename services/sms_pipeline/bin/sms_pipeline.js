@@ -412,7 +412,7 @@ const mutateCoerceAttachments = (msg) => {
 const flushOne = async (msg) => {
   if (!msg) return false;
   const decoded = mutateCoerceAttachments(JSON.parse(toString(msg)));
-  console.log("OUT (" + out.from + " => " + out.to + ")");
+  console.log("OUT (" + decoded.from + " => " + decoded.to + ")");
   await insertToDatabase(decoded);
   if ((decoded.message || "").length > 160 || decoded.attachments.length)
     await sendMMS(decoded);
