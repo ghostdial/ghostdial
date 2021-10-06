@@ -77,7 +77,7 @@ const once = (fn) => {
 };
 
 const sendMMS = async ({ from, to, message, attachments }) => {
-  console.log("sending MMS ...");
+  console.log("sending MMS with " + attachments.join(' '));
   const [media1, media2, media3] = attachments;
   const out = {
     did: from,
@@ -242,44 +242,54 @@ const startSMPPServer = (handleSms) => {
 
 const util = require("util");
 
+
+const fallbackForDID = async (n) => {
+  return await redis.get('fallback.' + await redis.get('extfor.' + n));
+};
+
 const handleSms = async (sms) => {
   try {
-    if (sms.to === GHOST_NUMBER) {
-      const from = sms.from;
-      const matches = sms.message.match(/^(\d+)=>(\d=)\s+(.*$)/);
+    if (await fallbackForDID(sms.to) === sms.from) {
+      let matches = sms.message.match(/(^\w{4})\s+(.*$)/);  
       if (matches) {
-        sms.from = matches[1];
-        sms.to = matches[2];
-        sms.message = matches[3];
-      } else {
-        const matches = sms.message.match(/(^\w{4})\s+(.*$)/);
         const tag = matches[1].toLowerCase();
         const target = await redis.get(tag);
         if (target) {
           const [from, to] = target.split(":");
-          sms.from = from;
-          sms.to = to;
-          sms.message = matches[2];
+          console.log('RELAY OUT (' + (await redis.get('extfor.' + sms.to)) + ':' + tag + ')');
+          return await redis.rpush(SMS_OUT_CHANNEL, JSON.stringify(Object.assign({}, sms, {
+            from: sms.to,
+            to: to,
+            message: matches[2]
+          })));
         }
+      }
+      matches = sms.message.match(/^(\d+)\s+(.*$)/);
+      if (matches) {
+        console.log('RELAY OUT (' + (await redis.get('extfor.' + sms.to)) + ':' + matches[1] + ')');
+        return await redis.lpush(SMS_OUT_CHANNEL, JSON.stringify(Object.assign({}, sms, {
+          from: sms.to,
+          to: matches[1],
+          message: matches[2]
+	})));
       }
     }
     console.log("IN (" + sms.from + " => " + sms.to + ")");
+    const fallback = await fallbackForDID(sms.to);
+    if (fallback) {
+      const tag = ethers.utils
+        .solidityKeccak256(["string", "string"], [sms.to, sms.from])
+        .substr(2, 4);
+      await redis.set(tag, sms.to + ":" + sms.from);
+      console.log('RELAY IN (' + sms.to + ':' + tag + ')');
+      await redis.lpush(SMS_OUT_CHANNEL, JSON.stringify(Object.assign({}, sms, {
+        from: sms.to,
+        message: sms.from + ' (' + tag + ') ' + sms.message,
+        to: fallback
+      })));
+    }
     await insertToDatabase(sms);
     await redis.rpush(SMS_IN_CHANNEL, JSON.stringify(sms));
-    const ext = await redis.get("extfor." + sms.to);
-    if (!ext) return;
-    const fallback = await redis.get("sms-fallback." + ext);
-    if (!fallback) return;
-    const forward = { ...sms };
-    forward.to = fallback;
-    forward.from = GHOST_NUMBER;
-    const tag = ethers.utils
-      .solidityKeccak256(["string", "string"], [sms.to, sms.from])
-      .substr(2, 4);
-    forward.message =
-      sms.from + "=>" + sms.to + " (" + tag + ") " + (sms.message || "");
-    await redis.set(tag, sms.to + ":" + sms.from);
-    await forwardMessage(forward);
   } catch (e) {
     console.error(e);
   }
@@ -319,6 +329,7 @@ const getAttachmentsEventually = async (id, count = 0) => {
 };
 
 const pullAttachment = async (url) => {
+	/*
   const ext = path.parse(url).ext;
   const slot = ethers.utils.hexlify(ethers.utils.randomBytes(32)).substr(2);
   const filename = ethers.utils.solidityKeccak256(['bytes32'], [ '0x' + slot ]).substr(2);
@@ -335,6 +346,8 @@ const pullAttachment = async (url) => {
     stream.on('end', () => resolve());
   });
   return fileUrl;
+  */
+  return url;
 };
 
 const pullAttachments = async (urls) => {
@@ -369,7 +382,7 @@ const pollOneMMS = async () => {
         message: v.message,
         attachments,
       };
-      if (false && msg.attachments.length === 0 && msg.message === '') {
+      if (msg.attachments.length === 0 && msg.message === '') {
         console.log('Must pull again:');
         console.log(util.inspect(msg, { colors: true, depth: 5 }));
         await new Promise((resolve) => setTimeout(resolve, 1500));
