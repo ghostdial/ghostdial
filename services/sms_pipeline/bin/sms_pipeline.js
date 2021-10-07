@@ -244,7 +244,7 @@ const util = require("util");
 
 
 const fallbackForDID = async (n) => {
-  return await redis.get('fallback.' + await redis.get('extfor.' + n));
+  return await redis.get('sms-fallback.' + await redis.get('extfor.' + n));
 };
 
 const handleSms = async (sms) => {
