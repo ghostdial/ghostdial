@@ -248,16 +248,16 @@ const fallbackForDID = async (n) => {
 };
 
 const makeTag = (from, to) => {
-  const tag = ethers.BigNumber.from(ethers.utils.solidityKeccak256(["string", "string"], [sms.to, sms.from])).mod(ethers.BigNumber.from(10).pow(4)).toString(10);
+  const tag = ethers.BigNumber.from(ethers.utils.solidityKeccak256(["string", "string"], [to, from])).mod(ethers.BigNumber.from(10).pow(4)).toString(10);
   return tag;
 };
-
-const setTagData = (tag, from, to) => {
-  await redis.set(tag, from + ':' + to);
+const setTagData = async (tag, from, to) => {
+  await redis.set('custom-extension.' + (await redis.get('extfor.' + from)) + '.' + tag, from + to);
+  await redis.set('tag.' + tag, from + ':' + to);
 };
 
-const getTagData = (tag) => {
-  const data = ((await redis.get(tag)) || '').split(':');
+const getTagData = async (tag) => {
+  const data = ((await redis.get('tag.' + tag)) || '').split(':');
   if (!data.length) return null;
   const [ from, to ] = data;
   return [ from, to ];
@@ -269,7 +269,8 @@ const handleSms = async (sms) => {
       let matches = sms.message.match(/tag\s+(.*$)/);
       if (matches) {
         const tag = matches[1];
-        const data = await getTagData(tag);
+        let data = await getTagData(tag);
+        if (data && data[0] !== sms.to) data = null;
         return await sendSMPP({ to: sms.from, from: sms.to, message: data ? data.join(':') : 'nothing here ghost' });
       }  
       matches = sms.message.match(/(^\w{4})\s+(.*$)/);  
