@@ -247,15 +247,37 @@ const fallbackForDID = async (n) => {
   return await redis.get('sms-fallback.' + await redis.get('extfor.' + n));
 };
 
+const makeTag = (from, to) => {
+  const tag = ethers.BigNumber.from(ethers.utils.solidityKeccak256(["string", "string"], [sms.to, sms.from])).mod(ethers.BigNumber.from(10).pow(4)).toString(10);
+  return tag;
+};
+
+const setTagData = (tag, from, to) => {
+  await redis.set(tag, from + ':' + to);
+};
+
+const getTagData = (tag) => {
+  const data = ((await redis.get(tag)) || '').split(':');
+  if (!data.length) return null;
+  const [ from, to ] = data;
+  return [ from, to ];
+};
+
 const handleSms = async (sms) => {
   try {
     if (await fallbackForDID(sms.to) === sms.from) {
-      let matches = sms.message.match(/(^\w{4})\s+(.*$)/);  
+      let matches = sms.message.match(/tag\s+(.*$)/);
+      if (matches) {
+        const tag = matches[1];
+        const data = await getTagData(tag);
+        return await sendSMPP({ to: sms.from, from: sms.to, message: data ? data.join(':') : 'nothing here ghost' });
+      }  
+      matches = sms.message.match(/(^\w{4})\s+(.*$)/);  
       if (matches) {
         const tag = matches[1].toLowerCase();
-        const target = await redis.get(tag);
+        const target = await getTagData(tag);
         if (target) {
-          const [from, to] = target.split(":");
+          const [from, to] = target;
           console.log('RELAY OUT (' + (await redis.get('extfor.' + sms.to)) + ':' + tag + ')');
           return await redis.rpush(SMS_OUT_CHANNEL, JSON.stringify(Object.assign({}, sms, {
             from: sms.to,
@@ -277,14 +299,12 @@ const handleSms = async (sms) => {
     console.log("IN (" + sms.from + " => " + sms.to + ")");
     const fallback = await fallbackForDID(sms.to);
     if (fallback) {
-      const tag = ethers.utils
-        .solidityKeccak256(["string", "string"], [sms.to, sms.from])
-        .substr(2, 4);
-      await redis.set(tag, sms.to + ":" + sms.from);
+      const tag = makeTag(sms.to, sms.from);
+      await setTagData(tag, sms.to, sms.from);
       console.log('RELAY IN (' + sms.to + ':' + tag + ')');
       await redis.lpush(SMS_OUT_CHANNEL, JSON.stringify(Object.assign({}, sms, {
         from: sms.to,
-        message: sms.from + ' (' + tag + ') ' + sms.message,
+        message: '(' + tag + ') ' + sms.message,
         to: fallback
       })));
     }

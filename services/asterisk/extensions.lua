@@ -288,6 +288,10 @@ function didfor(ext, to)
     channel.override = random;
     return override;
   end
+  local inbound_didfor = channel.didfor:get();
+  if inbound_didfor then
+    return inbound_didfor;
+  end
   if to then
     local did = cache:get('didfor.' .. ext .. '.' .. to);
     if did then return did; end
@@ -738,6 +742,7 @@ extensions.inbound = {
       channel.extension = extension;
       app.answer();
       if not cache:get('ghostem.' .. extension) then app.playtones('ring'); end
+      channel.inbound = extension;
       return app.waitexten(6);
     end
     return inbound_handler(context, channel.extension:get());
@@ -822,6 +827,9 @@ extensions.global_disa_handler = {
     end
     local extension = extension:sub(3 + #users[sipuser] + 1);
     channel.sipuser = sipuser;
+    if extfor(channel.inbound:get()) == sipuser then
+      channel.didfor = channel.inbound:get()
+    end
     channel.extcallerid = channel['CALLERID(num)']:get();
     set_callerid(channel, sipuser);
     return app['goto']('authenticated', extension, 1);
