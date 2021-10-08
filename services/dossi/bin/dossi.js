@@ -1,12 +1,14 @@
 "use strict";
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = 0;
 const debug = require("@xmpp/debug");
+const url = require('url');
 const { client, xml } = require("@xmpp/client");
 const xid = require("@xmpp/id");
 const pipl = require("@ghostdial/pipl");
 const child_process = require("child_process");
 const fs = require("fs-extra");
 const tmpdir = require("tmpdir");
+const faxvin = require('faxvin-puppeteer');
 const { Client } = require("ssh2");
 
 const path = require("path");
@@ -455,6 +457,11 @@ const lookupTruePeopleSearchQuery = async (query) => {
   }
 };
 
+const lookupFaxVinQuery = async (query) => {
+  const processed = piplQueryToObject(query);
+  return await faxvin.lookupPlate(processed);
+};
+
 const printDossier = async (body, to) => {
   if (body.substr(0, "socialscan".length).toLowerCase() === "socialscan") {
     const match = body.match(/^socialscan\s+(.*$)/);
@@ -515,6 +522,16 @@ const printDossier = async (body, to) => {
       send("truepeoplesearch-puppeteer " + search, to);
       send("wait for complete ...", to);
       send(JSON.stringify(await lookupTruePeopleSearchQuery(search), null, 2), to);
+    }
+    return;
+  }
+  if (body.substr(0, "faxvin".length).toLowerCase() === "faxvin") {
+    const match = body.match(/^faxvin\s+(.*$)/i);
+    if (match) {
+      const search = match[1];
+      send("faxvin-puppeteer " + search, to);
+      send("wait for complete ...", to);
+      send(JSON.stringify(await lookupFaxVinQuery(search), null, 2), to);
     }
     return;
   }
