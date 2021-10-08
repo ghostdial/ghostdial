@@ -21,6 +21,7 @@ const ZGREP_SSH_USER = process.env.ZGREP_SSH_USER;
 const ZGREP_DIR = process.env.ZGREP_DIR;
 const ZGREP_MAX_RESULTS = Number(process.env.ZGREP_MAX_RESULTS || 1000);
 const lodash = require("lodash");
+const truepeoplesearch = require('truepeoplesearch-puppeteer');
 
 const sendResults = async (results, query, to) => {
   const lines = results.split("\n");
@@ -441,6 +442,19 @@ const callerId = async (number, to) => {
   await piplNumberLookup(number, to);
 };
 
+const lookupTruePeopleSearchQuery = async (query) => {
+  if (query.match(/^\d+$/)) {
+    return await truepeoplesearch.byPhone(query);
+  } else {
+    const processed = piplQueryToObject(query);
+    if (processed.streetaddress) {
+      return await truepeoplesearch.byAddress(processed);
+    } else {
+      return await truepeoplesearch.byName(processed);
+    }
+  }
+};
+
 const printDossier = async (body, to) => {
   if (body.substr(0, "socialscan".length).toLowerCase() === "socialscan") {
     const match = body.match(/^socialscan\s+(.*$)/);
@@ -491,6 +505,16 @@ const printDossier = async (body, to) => {
       send("wait for complete... (this takes a while)", to);
       send(await runZgrepFull(search, to), to);
       send("zgrep-full:" + search + ": done!", to);
+    }
+    return;
+  }
+  if (body.substr(0, "truepeoplesearch".length).toLowerCase() === "truepeoplesearch") {
+    const match = body.match(/^truepeoplesearch\s+(.*$)/i);
+    if (match) {
+      const search = match[1];
+      send("truepeoplesearch-puppeteer " + search, to);
+      send("wait for complete ...", to);
+      send(JSON.stringify(await lookupTruePeopleSearchQuery(search), null, 2), to);
     }
     return;
   }

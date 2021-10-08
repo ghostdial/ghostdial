@@ -249,7 +249,7 @@ const fallbackForDID = async (n) => {
 
 const makeTag = (from, to) => {
   const tag = ethers.BigNumber.from(ethers.utils.solidityKeccak256(["string", "string"], [to, from])).mod(ethers.BigNumber.from(10).pow(4)).toString(10);
-  return tag;
+  return padTag(tag);
 };
 const setTagData = async (tag, from, to) => {
   await redis.set('custom-extension.' + (await redis.get('extfor.' + from)) + '.' + tag, from + to);
@@ -263,10 +263,17 @@ const getTagData = async (tag) => {
   return [ from, to ];
 };
 
+const padTag = (s) => {
+  return '0'.repeat(Math.max(0, 4 - s.length)) + s;;
+};
+
 const handleSms = async (sms) => {
+  const finalSms = {
+    ...sms
+  };
   try {
     if (await fallbackForDID(sms.to) === sms.from) {
-      let matches = sms.message.match(/tag\s+(.*$)/);
+      let matches = sms.message.match(/tag\s+(.*$)/i);
       if (matches) {
         const tag = matches[1];
         let data = await getTagData(tag);
@@ -280,12 +287,12 @@ const handleSms = async (sms) => {
         if (target) {
           const [from, to] = target;
           console.log('RELAY OUT (' + (await redis.get('extfor.' + sms.to)) + ':' + tag + ')');
-          return await redis.rpush(SMS_OUT_CHANNEL, JSON.stringify(Object.assign({}, sms, {
+          return await redis.lpush(SMS_OUT_CHANNEL, JSON.stringify(Object.assign({}, sms, {
             from: sms.to,
             to: to,
-            message: matches[2]
+            message: matches[2],
           })));
-        }
+        } else return;
       }
       matches = sms.message.match(/^(\d+)\s+(.*$)/);
       if (matches) {

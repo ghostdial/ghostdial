@@ -18,6 +18,7 @@
     "sqlite3": "^5.0.2",
     "ssh2": "^1.3.0",
     "tmpdir": "^1.0.1",
+    "truepeoplesearch-puppeteer": "https://github.com/freelogstudio/truepeoplesearch-puppeteer",
     "twilio": "^3.65.0"
   },
   "devDependencies": {

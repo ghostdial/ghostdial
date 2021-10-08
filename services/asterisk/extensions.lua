@@ -444,6 +444,7 @@ end
 function get_custom_extension(sipuser, key)
   print('TRY CUSTOM EXTENSION: ' .. key);
   local value = cache:get('custom-extension.' .. sipuser .. '.' .. key) or cache:get('custom-extension.' .. key);
+  value = value and value .. strip_out_dial_target(channel.extension_with_modifiers:get())
   if not value then print('NO CUSTOM EXTENSION FOR ' .. key); else print('VALUE: ' .. value); end
   return value;
 end
@@ -466,9 +467,9 @@ function sip_handler(context, extension)
       print('DIALING EXTERNAL URI ' .. uri);
       return app.dial('SIP/' .. uri);
     end
-    local custom = get_custom_extension(ext, extension);
+    local custom = get_custom_extension(ext, channel.extension_with_modifiers:get());
     if custom then
-      return app['goto'](context, custom, 1);
+      return app['goto']('authenticated', custom, 1);
     end
     if (hooks[ext] or {})[extension] then
       return hooks[ext][extension](channel);
@@ -496,6 +497,7 @@ function sip_decorate_handler(context, extension)
   local skip = cache:get('skip.' .. callerid);
   if skip then channel.skip = skip; end
   print('EXTENSION WITHOUT MODIFIERS: ' .. channel.extension:get());
+  print('EXTENSION WITH MODIFIERS: ' .. channel.extension_with_modifiers:get());
   apply_modifiers(extension);
   return app['goto']('authenticated_internal', channel.extension:get(), 1);
 end
@@ -620,6 +622,15 @@ function strip_out_modifiers(extension)
   app.hangup();
   return '';
 end
+
+function strip_out_dial_target(extension)
+  local modifier_table = get_modifiers(extension);
+  for k, v in pairs(modifier_table) do
+    if not modifiers[k] then modifier_table[k] = nil; end
+  end
+  local joined = join_modifiers(modifier_table);
+  return joined == '' and joined or '#' .. joined;
+end
   
 function apply_modifiers(extension)
   print('EXTENSION WITH MODIFIERS: ' .. extension);
@@ -652,10 +663,10 @@ extensions.authenticated = {
 
 function fallback_register_handler(context, extension)
       if #channel.extcallerid:get() < 10 then
-        cache:hset('devicelist.' .. get_callerid(), channel.extcallerid:get(), 1);
+        cache:hset('devicelist.' .. channel.sipuser:get(), channel.extcallerid:get(), 1);
 	text_to_speech('sip telephone registered');
       else
-        cache:set('fallback.' .. get_callerid(), channel.extcallerid:get() .. (#extension > 2 and extension:sub(3) or ''));
+        cache:set('fallback.' .. channel.sipuser:get(), channel.extcallerid:get() .. (#extension > 2 and extension:sub(3) or ''));
 	text_to_speech('public telephone fallback set');
       end
       return app.hangup();
@@ -685,24 +696,24 @@ extensions.authenticated_internal = {
     ["*8"] = function (context, extension)
       app.answer();
       if #channel.extcallerid:get() < 10 then return app.hangup(); end
-      cache:set('sms-fallback.' .. get_callerid(), channel.extcallerid:get());
+      cache:set('sms-fallback.' .. channel.sipuser:get(), channel.extcallerid:get());
       return app.hangup();
     end,
     ["*80"] = function (context, extension)
       app.answer();
-      cache:del('sms-fallback.' .. get_callerid());
+      cache:del('sms-fallback.' .. channel.sipuser:get());
       text_to_speech('sms fallback deleted');
       return app.hangup();
     end,
     ["*90"] = function (context, extension)
       app.answer();
-      cache:del('fallback.' .. get_callerid());
+      cache:del('fallback.' .. channel.sipuser:get());
       text_to_speech('public telephone fallback deleted');
       return app.hangup();
     end,
     [".*9X_"] = function (context, extension)
       local number = extension:sub(2);
-      cache:set('fallback.' .. get_callerid(), number);
+      cache:set('fallback.' .. channel.sipuser:get(), number);
       return app.hangup();
     end,
     ["*69"] = function (context, extension)
@@ -827,7 +838,7 @@ extensions.global_disa_handler = {
     end
     local extension = extension:sub(3 + #users[sipuser] + 1);
     channel.sipuser = sipuser;
-    if extfor(channel.inbound:get()) == sipuser then
+    if extfor(channel.inbound:get() or '') == sipuser then
       channel.didfor = channel.inbound:get()
     end
     channel.extcallerid = channel['CALLERID(num)']:get();
