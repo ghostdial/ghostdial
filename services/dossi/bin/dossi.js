@@ -3,9 +3,11 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = 0;
 const debug = require("@xmpp/debug");
 const url = require('url');
 const { client, xml } = require("@xmpp/client");
+const subprocesses = require('@ghostdial/subprocesses');
 const xid = require("@xmpp/id");
 const pipl = require("@ghostdial/pipl");
 const child_process = require("child_process");
+const voipms = require('@ghostdial/voipms');
 const fs = require("fs-extra");
 const tmpdir = require("tmpdir");
 const faxvin = require('faxvin-puppeteer');
@@ -21,7 +23,9 @@ const ZGREP_SSH_IDENTITY =
   path.join(process.env.HOME, ".ssh", "id_rsa");
 const ZGREP_SSH_USER = process.env.ZGREP_SSH_USER;
 const ZGREP_DIR = process.env.ZGREP_DIR;
+const VOIPMS_SUBACCOUNT = process.env.VOIPMS_SUBACCOUNT;
 const ZGREP_MAX_RESULTS = Number(process.env.ZGREP_MAX_RESULTS || 1000);
+const FAXVIN_DEFAULT_STATE = process.env.FAXVIN_DEFAULT_STATE;
 const lodash = require("lodash");
 const truepeoplesearch = require('truepeoplesearch-puppeteer');
 
@@ -33,6 +37,31 @@ const sendResults = async (results, query, to) => {
     send("zgrep:" + query + ":" + chunk.join("\n"), to);
     await new Promise((resolve, reject) => setTimeout(resolve, 300));
   }
+};
+
+const searchDIDs = async (query) => {
+  const processed = piplQueryToObject(query);
+  const result = await voipms.fromEnv().searchDIDsUSA.get(processed);
+  return result.dids.map((v) => v.did);
+};
+
+const orderDID = async (number, sourceDid) => {
+  const ext = await redis.get('extfor.' + sourceDid);
+  const { servers } = await voipms.getServersInfo.get();
+  const { server_pop } = servers.find((v) => v.server_hostname === (VOIPMS_POP || 'atlanta1.voip.ms'));
+  await voipms.orderDID.get({
+    did: number,
+    routing: 'account:' + VOIPMS_SUBACCOUNT,
+    pop: server_pop,
+    dialtime: 60,
+    cnam: 1,
+    billing_type: 1
+  });
+  await voipms.setSMS.get({
+    did: number,
+    enable: 1
+  });
+  await redis.set('extfor.' + number, ext);
 };
 
 const runZgrep = (query, to) => {
@@ -189,30 +218,6 @@ async function holehe(username) {
     });
   });
   return stripUsed(stdout);
-}
-
-async function sherlock(username) {
-  const subprocess = child_process.spawn(
-    "python3",
-    [
-      path.join(process.env.HOME, "sherlock", "sherlock", "sherlock.py"),
-      "--print-found",
-      username,
-    ],
-    { stdio: "pipe" }
-  );
-  const stdout = await new Promise((resolve, reject) => {
-    let data = "";
-    subprocess.stdout.setEncoding("utf8");
-    subprocess.stdout.on("data", (v) => {
-      data += v;
-    });
-    subprocess.on("exit", (code) => {
-      if (code !== 0) return reject(Error("non-zero exit code"));
-      resolve(data);
-    });
-  });
-  return stdout;
 }
 
 const mkTmp = async () => {
@@ -458,6 +463,7 @@ const lookupTruePeopleSearchQuery = async (query) => {
 };
 
 const lookupFaxVinQuery = async (query) => {
+  if (!query.match(/:/)) return await faxvin.lookupPlate({ state: FAXVIN_DEFAULT_STATE, plate: query });
   const processed = piplQueryToObject(query);
   return await faxvin.lookupPlate(processed);
 };
@@ -525,6 +531,43 @@ const printDossier = async (body, to) => {
     }
     return;
   }
+  if (body.substr(0, "donotcall".length).toLowerCase() === "donotcall") {
+    const match = body.match(/^donotcall\s+(.*$)/i);
+    if (match) {
+      const search = match[1];
+      send("ghostmaker donotcall " + search, to);
+      send("wait for complete ...", to);
+      await (require('/home/shell/ghostmaker')).addToDoNotCall(search);
+      send('done!', to);
+    }
+    return;
+  }
+  if (body.substr(0, "searchdids".length).toLowerCase() === 'searchdids') {
+    const match = body.match(/^searchdids\s+(.*$)/i);
+    if (match) {
+      const search = match[1];
+      send("searchdids " + search, to);
+      const dids = (await searchDIDs(search)).join(', ');
+      const link = await uploadToIPFS(search, dids);
+      send(link, to);
+      send(dids, to);
+    }
+    return;
+  }
+  if (body.substr(0, "orderdid".length).toLowerCase() === 'orderdid') {
+    const match = body.match(/^orderdid\s+(.*$)/i);
+    if (match) {
+      const search = match[1];
+      send("orderdid " + search, to);
+      try {
+        await orderDID(search, to.split('@')[0])
+        send('added!', to);
+      } catch (e) {
+        send(e.message, to);
+      }
+    }
+    return;
+  }
   if (body.substr(0, "faxvin".length).toLowerCase() === "faxvin") {
     const match = body.match(/^faxvin\s+(.*$)/i);
     if (match) {
@@ -541,7 +584,7 @@ const printDossier = async (body, to) => {
       const search = match[1];
       send("sherlock " + search + " --print-found", to);
       send("wait for complete ...", to);
-      send(await sherlock(search), to);
+      await subprocesses.sherlock(search, (data) => send(data, to));
     }
     return;
   }

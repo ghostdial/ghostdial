@@ -7,5 +7,5 @@
   "author": "Ghostdial LLC <ghostdialfoundation@gmail.com>",
   "license": "MIT",
   "private": true,
-  "workspaces": ["./libraries/**/*", "./services/**/*"]
+  "workspaces": ["libraries/**", "services/**"]
 }

@@ -7,6 +7,9 @@ const fns = require("./fns");
 const qs = require("query-string");
 
 class VoipmsClient {
+  static fromEnv() {
+    return new this({ username: process.env.VOIPMS_USERNAME, password: process.env.VOIPMS_PASSWORD });
+  }
   constructor({ username, password }) {
     this.config = {
       username,

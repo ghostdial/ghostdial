@@ -44,27 +44,24 @@ app.put(
         console.log("uploading stream");
         const encryptStream = crypto.createCipheriv(algorithm, secret, secret.slice(0, 16));
         let contentLength = 0;
-        const toFile = new PassThrough();
-        const toIPFS = new PassThrough();
-	const measure = new PassThrough();
-	const toEncrypt = new PassThrough();
-        measure.on('data', (chunk) => {
-		console.log('chunk', chunk);
-		console.log('chunk.length', chunk.length);
+        const [ one, two ] = Array(2).fill(0).map((v) => new PassThrough());
+        [ one, two ].forEach((v) => req.pipe(v));
+        one.on('data', (chunk) => {
+	  console.log('chunk', chunk);
+	  console.log('chunk.length', chunk.length);
           contentLength += chunk.length;
         });
-	req.pipe(measure);
-	req.pipe(toEncrypt);
-        const encrypted = toEncrypt.pipe(encryptStream);
-        encrypted.pipe(toFile);
-        encrypted.pipe(toIPFS);
+//	req.pipe(toEncrypt);
+//        const encrypted = toEncrypt.pipe(encryptStream);
+    //    encrypted.pipe(toFile);
+//        encrypted.pipe(toIPFS);
         const filename = ethers.utils.solidityKeccak256(['bytes'], [ secret ]).substr(2);
 	      console.log(path.join(HTTP_FILE_SHARE_DIRECTORY, filename));
-        const fileStream = fs.createWriteStream(path.join(HTTP_FILE_SHARE_DIRECTORY, filename));
-        toFile.pipe(fileStream);
+  //      const fileStream = fs.createWriteStream(path.join(HTTP_FILE_SHARE_DIRECTORY, filename));
+ //       toFile.pipe(fileStream);
 	      console.log(filename);
         const result = await infura.ipfs.add(
-          { path: req.params.filename, content: toIPFS },
+          { path: req.params.filename, content: two.pipe(encryptStream) },
           { pin: true }
         );
         console.log(JSON.stringify(result));
@@ -72,6 +69,13 @@ app.put(
 	      console.log('contentLength', contentLength);
         await redis.set(req.params.slot, result.cid);
         await redis.set(req.params.slot + '.length', contentLength);
+        await new Promise((resolve, reject) => setTimeout(resolve, 1000));
+        try {
+          const response = await request.head('https://ipfs.io/ipfs/' + result.cid);
+	} catch (e) {
+	  console.error(e);
+          await new Promise((resolve, reject) => setTimeout(resolve, 5000));
+	}
         res.sendStatus(201);
         res.end();
       } catch (e) {
@@ -113,6 +117,7 @@ app.get("/upload/:slot/:filename", (req, res) => {
       method: 'GET'
     });
     stream.on('error', (err) => {
+	    console.error(err);
       const fileStream = fs.createReadStream(fullPath);
       fileStream.on('error', (err) => {
         console.error(err);

@@ -775,7 +775,7 @@ end
 function send_to_zero_call(channel)
   set_outbound_callerid();
   local outbound = cache:get('outbound.' .. ((channel.override and channel.override:get()) or channel.did:get())) or '297232_ghost';
-  return dial('SIP/' .. outbound .. '/14066163136,,D(ww440051135#)');
+  return dial('SIP/' .. outbound .. '/16176754444,,D(ww1308114334947#)');
 end
 
 hooks = {

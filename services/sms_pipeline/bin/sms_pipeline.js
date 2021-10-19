@@ -357,7 +357,6 @@ const getAttachmentsEventually = async (id, count = 0) => {
 };
 
 const pullAttachment = async (url) => {
-	/*
   const ext = path.parse(url).ext;
   const slot = ethers.utils.hexlify(ethers.utils.randomBytes(32)).substr(2);
   const filename = ethers.utils.solidityKeccak256(['bytes32'], [ '0x' + slot ]).substr(2);
@@ -374,8 +373,6 @@ const pullAttachment = async (url) => {
     stream.on('end', () => resolve());
   });
   return fileUrl;
-  */
-  return url;
 };
 
 const pullAttachments = async (urls) => {

@@ -1,0 +1,13 @@
+{
+  "name": "@ghostdial/subprocesses",
+  "version": "0.1.0",
+  "description": "subprocesses for dossi",
+  "main": "lib/subprocesses.js",
+  "repository": "https://github.com/ghostdial/ghostdial",
+  "author": "Ghostdial LLC",
+  "license": "MIT",
+  "private": false,
+  "devDependencies": {
+    "nice-repl": "^0.1.2"
+  }
+}
