@@ -24,6 +24,7 @@ const ZGREP_SSH_IDENTITY =
 const ZGREP_SSH_USER = process.env.ZGREP_SSH_USER;
 const ZGREP_DIR = process.env.ZGREP_DIR;
 const VOIPMS_SUBACCOUNT = process.env.VOIPMS_SUBACCOUNT;
+const VOIPMS_POP = process.env.VOIPMS_POP;
 const ZGREP_MAX_RESULTS = Number(process.env.ZGREP_MAX_RESULTS || 1000);
 const FAXVIN_DEFAULT_STATE = process.env.FAXVIN_DEFAULT_STATE;
 const lodash = require("lodash");
@@ -46,10 +47,11 @@ const searchDIDs = async (query) => {
 };
 
 const orderDID = async (number, sourceDid) => {
+  const vms = voipms.fromEnv();
   const ext = await redis.get('extfor.' + sourceDid);
-  const { servers } = await voipms.getServersInfo.get();
+  const { servers } = await vms.getServersInfo.get();
   const { server_pop } = servers.find((v) => v.server_hostname === (VOIPMS_POP || 'atlanta1.voip.ms'));
-  await voipms.orderDID.get({
+  await vms.orderDID.get({
     did: number,
     routing: 'account:' + VOIPMS_SUBACCOUNT,
     pop: server_pop,
@@ -57,7 +59,7 @@ const orderDID = async (number, sourceDid) => {
     cnam: 1,
     billing_type: 1
   });
-  await voipms.setSMS.get({
+  await vms.setSMS.get({
     did: number,
     enable: 1
   });
