@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@xmpp/client": "^0.12.0",
+    "facebook-recover-puppeteer": "https://github.com/freelogstudio/facebook-recover-puppeteer",
     "faxvin-puppeteer": "https://github.com/freelogstudio/faxvin-puppeteer",
     "fs-extra": "^10.0.0",
     "knex": "^0.95.10",

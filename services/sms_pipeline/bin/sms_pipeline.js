@@ -326,7 +326,7 @@ const handleSms = async (sms) => {
 const POLL_INTERVAL = 10000;
 const moment = require("moment");
 
-const OFFSET = 3600 * 4;
+const OFFSET = 3600 * 5;
 const fromUnix = (unix) => {
   return moment(new Date((unix - OFFSET) * 1000)).format("YYYY-MM-DD HH:mm:ss");
 };
@@ -357,6 +357,8 @@ const getAttachmentsEventually = async (id, count = 0) => {
 };
 
 const pullAttachment = async (url) => {
+  return url;
+/*
   const ext = path.parse(url).ext;
   const slot = ethers.utils.hexlify(ethers.utils.randomBytes(32)).substr(2);
   const filename = ethers.utils.solidityKeccak256(['bytes32'], [ '0x' + slot ]).substr(2);
@@ -373,6 +375,7 @@ const pullAttachment = async (url) => {
     stream.on('end', () => resolve());
   });
   return fileUrl;
+  */
 };
 
 const pullAttachments = async (urls) => {
@@ -396,7 +399,7 @@ const pollOneMMS = async () => {
   });
   const { sms } = response;
   if (sms)
-    await sms.reduce(async function pull(r, v) {
+    await sms.reduce(async function pull(r, v, i, ary, count = 0) {
       await r;
       const attachments = await pullAttachments([v.col_media1, v.col_media2, v.col_media3].filter(
         Boolean
@@ -411,10 +414,11 @@ const pollOneMMS = async () => {
         console.log('Must pull again:');
         console.log(util.inspect(msg, { colors: true, depth: 5 }));
         await new Promise((resolve) => setTimeout(resolve, 1500));
-        return await pull(r, (await voipms.getMMS.get({ id: v.id })).sms[0]);
+        return await pull(r, ((await voipms.getMMS.get({ id: v.id })).sms || {})[0] || {}, i, ary, count + 1);
       }
+      if (count === 5) return;
       const result = await handleSms(msg).catch((err) => console.error(err));
-      try {
+      if (!msg.attachments.length) try {
         const { status } = await voipms.deleteMMS.get({ id: v.id });
         if (status !== 'success') await voipms.deleteSMS.get({ id: v.id });
       } catch (e) { console.error(e); }

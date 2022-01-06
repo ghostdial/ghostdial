@@ -6,10 +6,8 @@ const { client, xml } = require("@xmpp/client");
 const subprocesses = require('@ghostdial/subprocesses');
 const xid = require("@xmpp/id");
 const pipl = require("@ghostdial/pipl");
-const child_process = require("child_process");
 const voipms = require('@ghostdial/voipms');
 const fs = require("fs-extra");
-const tmpdir = require("tmpdir");
 const faxvin = require('faxvin-puppeteer');
 const { Client } = require("ssh2");
 
@@ -29,6 +27,7 @@ const ZGREP_MAX_RESULTS = Number(process.env.ZGREP_MAX_RESULTS || 1000);
 const FAXVIN_DEFAULT_STATE = process.env.FAXVIN_DEFAULT_STATE;
 const lodash = require("lodash");
 const truepeoplesearch = require('truepeoplesearch-puppeteer');
+const facebook = require('facebook-recover-puppeteer');
 
 const sendResults = async (results, query, to) => {
   const lines = results.split("\n");
@@ -43,7 +42,8 @@ const sendResults = async (results, query, to) => {
 const searchDIDs = async (query) => {
   const processed = piplQueryToObject(query);
   const result = await voipms.fromEnv().searchDIDsUSA.get(processed);
-  return result.dids.map((v) => v.did);
+	console.log(result);
+  return (result.dids || []).map((v) => v.did);
 };
 
 const orderDID = async (number, sourceDid) => {
@@ -153,95 +153,6 @@ const runZgrepFull = (query, to) => {
   });
 };
 
-const readResult = async (query) => {
-  const result = JSON.parse(
-    (await fs.readFile(path.join(tmpdir, query + ".json"), "utf8")).trim()
-  );
-  return result;
-};
-var stripUsed = (s) => {
-  return s
-    .split("\n")
-    .filter((v) => v.match("[+]"))
-    .join("\n");
-};
-
-const readResultRaw = async (query) => {
-  const result = (
-    await fs.readFile(path.join(tmpdir, query + ".json"), "utf8")
-  ).trim();
-  return result;
-};
-async function whatsmyname(username) {
-  await mkTmp();
-  const dir = process.cwd();
-  process.chdir(path.join(process.env.HOME, "WhatsMyName"));
-  const subprocess = child_process.spawn(
-    "python3",
-    [
-      path.join(
-        process.env.HOME,
-        "WhatsMyName",
-        "web_accounts_list_checker.py"
-      ),
-      "-u",
-      username,
-      "-of",
-      path.join(tmpdir, username + ".json"),
-    ],
-    { stdio: "pipe" }
-  );
-  process.chdir(dir);
-  const stdout = await new Promise((resolve, reject) => {
-    let data = "";
-    subprocess.on("exit", (code) => {
-      if (code !== 0) return reject(Error("non-zero exit code"));
-      resolve(readResultRaw(username));
-    });
-  });
-  return stdout;
-}
-
-async function holehe(username) {
-  const subprocess = child_process.spawn(
-    "holehe",
-    [username, "--only-used", "--no-color"],
-    { stdio: "pipe" }
-  );
-  const stdout = await new Promise((resolve, reject) => {
-    let data = "";
-    subprocess.stdout.setEncoding("utf8");
-    subprocess.stdout.on("data", (v) => {
-      data += v;
-    });
-    subprocess.on("exit", (code) => {
-      if (code !== 0) return reject(Error("non-zero exit code"));
-      resolve(data);
-    });
-  });
-  return stripUsed(stdout);
-}
-
-const mkTmp = async () => {
-  await mkdirp(tmpdir);
-};
-
-async function socialscan(username) {
-  await mkTmp();
-  const subprocess = child_process.spawn(
-    "socialscan",
-    ["--json", path.join(tmpdir, username + ".json"), username],
-    { stdio: "pipe" }
-  );
-  const stdout = await new Promise((resolve, reject) => {
-    let data = "";
-    subprocess.on("exit", (code) => {
-      if (code !== 0) return reject(Error("non-zero exit code"));
-      resolve(readResult(username));
-    });
-  });
-  return stdout;
-}
 
 const piplQueryToObject = (query) => {
   return query
@@ -475,7 +386,8 @@ const printDossier = async (body, to) => {
     const match = body.match(/^socialscan\s+(.*$)/);
     if (match) {
       const search = match[1];
-      send(JSON.stringify(await socialscan(search), null, 2), to);
+      send(JSON.stringify(await subprocesses.socialscan(search), null, 2), to);
+      talkGhastly(to);
     }
     return;
   }
@@ -485,7 +397,8 @@ const printDossier = async (body, to) => {
       const search = match[1];
       send("web_accounts_list_checker.py -u " + search, to);
       send("wait for complete ...", to);
-      send(await whatsmyname(search), to);
+      send(await subprocesses.whatsmyname(search), to);
+      talkGhastly(to);
     }
     return;
   }
@@ -495,7 +408,8 @@ const printDossier = async (body, to) => {
       const search = match[1];
       send("holehe " + search, to);
       send("wait for complete ...", to);
-      send(await holehe(search), to);
+      send(await subprocesses.holehe(search), to);
+      talkGhastly(to);
     }
     return;
   }
@@ -530,6 +444,18 @@ const printDossier = async (body, to) => {
       send("truepeoplesearch-puppeteer " + search, to);
       send("wait for complete ...", to);
       send(JSON.stringify(await lookupTruePeopleSearchQuery(search), null, 2), to);
+      talkGhastly(to);
+    }
+    return;
+  }
+  if (body.substr(0, "facebook".length).toLowerCase() === "facebook") {
+    const match = body.match(/^facebook\s+(.*$)/i);
+    if (match) {
+      const search = match[1];
+      send("facebook-recover-puppeteer " + search, to);
+      send("wait for complete ...", to);
+      send(JSON.stringify(await facebook.lookupPhone({ phone: search }), null, 2), to);
+      talkGhastly(to);
     }
     return;
   }
@@ -539,8 +465,8 @@ const printDossier = async (body, to) => {
       const search = match[1];
       send("ghostmaker donotcall " + search, to);
       send("wait for complete ...", to);
-      await (require('/home/shell/ghostmaker')).addToDoNotCall(search);
-      send('done!', to);
+      await (require('/root/ghostmaker')).addToDoNotCall(search);
+      talkGhastly(to);
     }
     return;
   }
@@ -577,6 +503,7 @@ const printDossier = async (body, to) => {
       send("faxvin-puppeteer " + search, to);
       send("wait for complete ...", to);
       send(JSON.stringify(await lookupFaxVinQuery(search), null, 2), to);
+      talkGhastly(to);
     }
     return;
   }
@@ -587,6 +514,7 @@ const printDossier = async (body, to) => {
       send("sherlock " + search + " --print-found", to);
       send("wait for complete ...", to);
       await subprocesses.sherlock(search, (data) => send(data, to));
+      talkGhastly(to);
     }
     return;
   }

@@ -9,5 +9,10 @@
   "private": false,
   "devDependencies": {
     "nice-repl": "^0.1.2"
+  },
+  "dependencies": {
+    "fs-extra": "^10.0.0",
+    "mkdirp": "^1.0.4",
+    "tmpdir": "^1.0.1"
   }
 }

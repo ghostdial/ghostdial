@@ -121,6 +121,7 @@ function pstn_fallback_dial(channel)
 --  channel['CALLERID(name)'] = channel.callerid_num:get() .. ': ' .. channel.callerid_name:get();
   print('dialing');
   local match = number:find('#%*(.*)')
+  app.stopplaytones();
   local status = dial('SIP/' .. outbound .. '/' .. get_number_from_dial(number), 20, 'U(detect_voicemail,s,1)g' .. get_dial_argument(number));
   print(status);
   set_callerid(channel, callerid_num);
@@ -184,14 +185,14 @@ function write_voicemail_did(number)
   local filepath = '/var/spool/asterisk/voicemail/default/' .. number .. '/did.txt';
   local file = io.open(filepath, 'w');
   local extension = channel.extension:get();
-  file:write(didfor(extension, nil) or extension);
+  file:write(didfor(number, nil) or extension);
   print('wrote voicemail for ext ' .. number .. ' at filepath ' .. filepath);
   file:close();
 end
 
 extensions.activate_simple_mobile = {
   s = function (context, extension)
-    local simnumber, airtime, pin, zipcode = channel.ARG1:get():match('([^:]+)');;
+    local simnumber, airtime, pin, zipcode = channel.ARG1:get():match('([^:]+)');
     if not simnumber or not airtime or not pin or not zipcode then
       channel.GOSUB_RESULT = 'ABORT';
       return app['return']();
@@ -388,7 +389,10 @@ function dialsip(channel, to, on_failure)
     app.answer();
     set_last_cid(channel, channel.callerid_num:get(), channel.did:get());
     local status = channel.skip:get() ~= 'sip' and dial(ring_group(to), 20) or 'CHANUNAVAIL';
-    if status == "CHANUNAVAIL" or status == "NOANSWER" and channel.skip:get() ~= "pstn" then status = pstn_fallback_dial(channel); end
+    app.playtones('ring');
+    if status == "CHANUNAVAIL" or status == "NOANSWER" and channel.skip:get() ~= "pstn" then 
+	    status = pstn_fallback_dial(channel);
+    end
     if status == "CHANUNAVAIL" or status == "BUSY" or status == "CONGESTED" or status == "NOANSWER" then
       return send_to_voicemail(channel, to)
     else
@@ -731,6 +735,9 @@ extensions.authenticated_internal = {
       local extension_to_save, extension_record = extension:match('%*%*([^%*]+)%*(.*)$');
       set_custom_extension(channel.ext:get(), extension_to_save, extension_record);
       return app.hangup();
+    end,
+    ["00"] = function (context, extension)
+      return app.waitexten(20);
     end
   }; 
 extensions.inbound = {

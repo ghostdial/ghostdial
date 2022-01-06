@@ -44,38 +44,38 @@ app.put(
         console.log("uploading stream");
         const encryptStream = crypto.createCipheriv(algorithm, secret, secret.slice(0, 16));
         let contentLength = 0;
-        const [ one, two ] = Array(2).fill(0).map((v) => new PassThrough());
-        [ one, two ].forEach((v) => req.pipe(v));
+	      /*
+        const [ one, two, three ] = Array(3).fill(0).map((v) => new PassThrough());
+        [ one, two, three ].forEach((v) => req.pipe(v));
         one.on('data', (chunk) => {
 	  console.log('chunk', chunk);
 	  console.log('chunk.length', chunk.length);
           contentLength += chunk.length;
         });
+	*/
 //	req.pipe(toEncrypt);
 //        const encrypted = toEncrypt.pipe(encryptStream);
     //    encrypted.pipe(toFile);
 //        encrypted.pipe(toIPFS);
+	              /*
         const filename = ethers.utils.solidityKeccak256(['bytes'], [ secret ]).substr(2);
 	      console.log(path.join(HTTP_FILE_SHARE_DIRECTORY, filename));
+	      */
   //      const fileStream = fs.createWriteStream(path.join(HTTP_FILE_SHARE_DIRECTORY, filename));
  //       toFile.pipe(fileStream);
-	      console.log(filename);
         const result = await infura.ipfs.add(
-          { path: req.params.filename, content: two.pipe(encryptStream) },
+          { path: req.params.filename, content: req.pipe(encryptStream) },
           { pin: true }
         );
         console.log(JSON.stringify(result));
         console.log("uploaded " + result.cid);
 	      console.log('contentLength', contentLength);
-        await redis.set(req.params.slot, result.cid);
-        await redis.set(req.params.slot + '.length', contentLength);
+        if (result.cid) await redis.set(req.params.slot, result.cid);
+	      /*
+        if (result.cid) await redis.set(req.params.slot + '.length', contentLength);
+	*/
+
         await new Promise((resolve, reject) => setTimeout(resolve, 1000));
-        try {
-          const response = await request.head('https://ipfs.io/ipfs/' + result.cid);
-	} catch (e) {
-	  console.error(e);
-          await new Promise((resolve, reject) => setTimeout(resolve, 5000));
-	}
         res.sendStatus(201);
         res.end();
       } catch (e) {
@@ -90,6 +90,7 @@ app.put(
 const TIMEOUT = process.env.IPFS_FILE_SHARING_TIMEOUT || 30000;
 
 app.get("/upload/:slot/:filename", (req, res) => {
+  const slot = req.params.slot;
   (async () => {
     let secret = Buffer.from(ethers.utils.solidityKeccak256(['string', 'string'], [ HTTP_FILE_SHARE_SECRET, req.params.slot ]).substr(2), 'hex');
     const filename = ethers.utils.solidityKeccak256(['bytes'], [ secret ]).substr(2);
@@ -101,21 +102,24 @@ app.get("/upload/:slot/:filename", (req, res) => {
     let shouldLoadFromFs;
 	  /*
     try {
-//      const head = await new Promise((resolve, reject) => request.head('https://cloudflare-ipfs.com/ipfs/' + cid + '?filename=' + req.params.filename, (err, result) => err ? reject(err) : resolve(result)));
- //     const contentLength = Number(head.headers['content-length'] || head.headers['Content-Length'] || head.headers['Content-length']);
-  //    if (isNaN(contentLength) || contentLength === 0) shouldLoadFromFs = true;
+ //     if (isNaN(contentLength) || contentLength === 0) shouldLoadFromFs = true;
     } catch (e) {
    //   console.error(e);
     //  shouldLoadFromFs = true;
     }
     */
     const fullPath = path.join(HTTP_FILE_SHARE_DIRECTORY, filename);
+	  /*
     res.setHeader('content-type', mime.lookup(req.params.filename));
     res.setHeader('content-length', await redis.get(req.params.slot + '.length'));
+    res.setHeader('Content-Type', mime.lookup(req.params.filename));
+    res.setHeader('Content-Length', await redis.get(req.params.slot + '.length'));
+    */
     const stream = request({
       url: 'https://ipfs.io/ipfs/' + cid + '?filename=' + req.params.filename,
       method: 'GET'
     });
+	  /*
     stream.on('error', (err) => {
 	    console.error(err);
       const fileStream = fs.createReadStream(fullPath);
@@ -125,8 +129,14 @@ app.get("/upload/:slot/:filename", (req, res) => {
       });
       fileStream.pipe(decryptStream).pipe(res);
     });
-    stream.pipe(decryptStream).pipe(res);
-    stream.on('end', async () => {
+    */
+    const headers = Object.entries(await new Promise((resolve, reject) => {
+      stream.on('error', reject);
+      stream.on('response', (v) => { resolve(v.headers); });
+    }));
+    headers.forEach(([ key, value ]) => res.setHeader(key, value));
+    stream.pipe(decryptStream.pipe(res));
+	    /*
       await new Promise((resolve) => setTimeout(resolve, TIMEOUT));
       try {
         if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
@@ -134,7 +144,7 @@ app.get("/upload/:slot/:filename", (req, res) => {
       if (shouldLoadFromFs) {
         if (!await fs.exists(fullPath)) shouldLoadFromFs = false;
       }
-    });
+      */
   })().catch((err) => console.error(err));
 });
 
