@@ -1363,6 +1363,19 @@ areacodes@^0.2.1:
   dependencies:
     doublescore "0.3.7"
 
+ari-client@^2.2.0:
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/ari-client/-/ari-client-2.2.0.tgz#a4b51d1f119d8323a83537fd172b6e6ea907c958"
+  integrity sha512-DPz+vC/dZyvy5HqBrEzYpNH6X2hDb+AIyRith6f8IVLHyveRWaHPO0S7rF1Q91qry/U8G+504KUZfeaBPwzIVQ==
+  dependencies:
+    backoff-func "^0.1.2"
+    bluebird "^3.5.2"
+    lodash "^4.17.10"
+    request "^2.34.0"
+    swagger-client "2.0.26"
+    uuid "^3.0.0"
+    ws "^6.0.0"
+
 arr-diff@^4.0.0:
   version "4.0.0"
   resolved "https://registry.yarnpkg.com/arr-diff/-/arr-diff-4.0.0.tgz#d6461074febfec71e7e15235761a329a5dc7c520"
@@ -1445,6 +1458,11 @@ assign-symbols@^1.0.0:
   resolved "https://registry.yarnpkg.com/assign-symbols/-/assign-symbols-1.0.0.tgz#59667f41fadd4f20ccbc2bb96b8d4f7f78ec0367"
   integrity sha1-WWZ/QfrdTyDMvCu5a41Pf3jsA2c=
 
+async-limiter@~1.0.0:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/async-limiter/-/async-limiter-1.0.1.tgz#dd379e94f0db8310b08291f9d64c3209766617fd"
+  integrity sha512-csOlWGAcRFJaI6m+F2WKdnMKr4HhdhFVBk0H/QbJFMCr+uO2kwohwXQPxw/9OCxp05r5ghVBFSyioixx3gfkNQ==
+
 async-retry@^1.3.1:
   version "1.3.3"
   resolved "https://registry.yarnpkg.com/async-retry/-/async-retry-1.3.3.tgz#0e7f36c04d8478e7a58bdbed80cedf977785f280"
@@ -1492,6 +1510,11 @@ aws4@^1.8.0:
   resolved "https://registry.yarnpkg.com/aws4/-/aws4-1.11.0.tgz#d61f46d83b2519250e2784daf5b09479a8b41c59"
   integrity sha512-xh1Rl34h6Fi1DC2WWKfxUTVqRsNnr6LsKz2+hfwDxQJWmrx8+c7ylaqBMcHfl1U1r2dsifOvKX3LQuLNZ+XSvA==
 
+ax@0.1.8:
+  version "0.1.8"
+  resolved "https://registry.yarnpkg.com/ax/-/ax-0.1.8.tgz#27ca9a73fa4c78a478d62d827cad860a24fdd497"
+  integrity sha1-J8qac/pMeKR41i2CfK2GCiT91Jc=
+
 axios@^0.21.1, axios@^0.21.4:
   version "0.21.4"
   resolved "https://registry.yarnpkg.com/axios/-/axios-0.21.4.tgz#c67b90dc0568e5c1cf2b0b858c43ba28e2eda575"
@@ -1515,6 +1538,11 @@ babylon@^6.14.0:
   version "6.18.0"
   resolved "https://registry.yarnpkg.com/babylon/-/babylon-6.18.0.tgz#af2f3b88fa6f5c1e4c634d1a0f8eac4f55b395e3"
   integrity sha512-q/UEjfGJ2Cm3oKV71DJz9d25TPnq5rhBVL2Q4fA5wcC3jcrdn7+SssEybFIxwAvvP+YCsCYNKughoF33GxgycQ==
+
+backoff-func@^0.1.2:
+  version "0.1.2"
+  resolved "https://registry.yarnpkg.com/backoff-func/-/backoff-func-0.1.2.tgz#54c3fae2bade587234bad5db87e3412c9fa98783"
+  integrity sha1-VMP64rreWHI0utXbh+NBLJ+ph4M=
 
 balanced-match@^1.0.0:
   version "1.0.2"
@@ -1631,7 +1659,7 @@ block-stream@*:
   dependencies:
     inherits "~2.0.0"
 
-bluebird@^3.7.2:
+bluebird@^3.5.2, bluebird@^3.7.2:
   version "3.7.2"
   resolved "https://registry.yarnpkg.com/bluebird/-/bluebird-3.7.2.tgz#9f229c15be272454ffa973ace0dbee79a1b0c36f"
   integrity sha512-XpNj6GDQzdfW+r2Wnn7xiSAd7TM3jzkxGXBGTtWKuSXv1xUV+azxAm8jdWZN06QTQk+2N2XB9jRDkvbmQmcRtg==
@@ -1735,6 +1763,11 @@ browserslist@^4.16.6:
     escalade "^3.1.1"
     node-releases "^2.0.1"
     picocolors "^1.0.0"
+
+btoa@1.1.1:
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/btoa/-/btoa-1.1.1.tgz#27c8106263108e9dd41ff2faaad2a17045e35eba"
+  integrity sha1-J8gQYmMQjp3UH/L6qtKhcEXjXro=
 
 buffer-crc32@~0.2.3:
   version "0.2.13"
@@ -1900,6 +1933,11 @@ chalk@^4.1.0, chalk@^4.1.1:
   dependencies:
     ansi-styles "^4.1.0"
     supports-color "^7.1.0"
+
+chalk@^5.0.1:
+  version "5.0.1"
+  resolved "https://registry.yarnpkg.com/chalk/-/chalk-5.0.1.tgz#ca57d71e82bb534a296df63bbacc4a1c22b2a4b6"
+  integrity sha512-Fo07WOYGqMfCWHOzSXOt2CxDbC6skS/jO9ynEcmpANMoPrD+W1r1K6Vx7iNm+AQmETU1Xr2t+n8nzkV9t6xh3w==
 
 chokidar@^3.4.0:
   version "3.5.2"
@@ -2155,6 +2193,11 @@ cookie@0.4.0:
   version "0.4.0"
   resolved "https://registry.yarnpkg.com/cookie/-/cookie-0.4.0.tgz#beb437e7022b3b6d49019d088665303ebe9c14ba"
   integrity sha512-+Hp8fLp57wnUSt0tY0tHEXh4voZRDnoIrZPqlo3DPiI4y9lwg/jqx+1Om94/W6ZaPDOUbnjOt/99w66zk+l1Xg==
+
+cookiejar@1.3.1:
+  version "1.3.1"
+  resolved "https://registry.yarnpkg.com/cookiejar/-/cookiejar-1.3.1.tgz#c04b048f688f801623acd90cd5848c2bf8891a17"
+  integrity sha1-wEsEj2iPgBYjrNkM1YSMK/iJGhc=
 
 copy-descriptor@^0.1.0:
   version "0.1.1"
@@ -3563,7 +3606,7 @@ iconv-lite@0.4.24, iconv-lite@^0.4.4:
   dependencies:
     safer-buffer ">= 2.1.2 < 3"
 
-iconv-lite@0.x, iconv-lite@^0.6.2:
+iconv-lite@0.x, "iconv-lite@>= 0.1.2", iconv-lite@^0.6.2:
   version "0.6.3"
   resolved "https://registry.yarnpkg.com/iconv-lite/-/iconv-lite-0.6.3.tgz#a52f80bf38da1952eb5c681790719871a1a72501"
   integrity sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==
@@ -4739,7 +4782,7 @@ lodash.set@^4.0.0:
   resolved "https://registry.yarnpkg.com/lodash.set/-/lodash.set-4.3.2.tgz#d8757b1da807dde24816b0d6a84bea1a76230b23"
   integrity sha1-2HV7HagH3eJIFrDWqEvqGnYjCyM=
 
-lodash@^4.17.20, lodash@^4.17.21, lodash@^4.17.4:
+lodash@^4.17.10, lodash@^4.17.20, lodash@^4.17.21, lodash@^4.17.4:
   version "4.17.21"
   resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.17.21.tgz#679591c564c3bffaae8454cf0b3df370c3d6911c"
   integrity sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==
@@ -6289,7 +6332,7 @@ request-debug@^0.2.0:
   dependencies:
     stringify-clone "^1.0.0"
 
-request@^2.87.0, request@^2.88.2:
+request@^2.34.0, request@^2.87.0, request@^2.88.2:
   version "2.88.2"
   resolved "https://registry.yarnpkg.com/request/-/request-2.88.2.tgz#d73c918731cb5a87da047e207234146f664d12b3"
   integrity sha512-MsvtOrfG9ZcrOwAW+Qi+F6HbD0CWXEh9ou77uOb7FM2WPhwT7smM833PzanhJLsgXjN89Ir6V2PczXNnMpwKhw==
@@ -6623,6 +6666,16 @@ shebang-regex@^3.0.0:
   resolved "https://registry.yarnpkg.com/shebang-regex/-/shebang-regex-3.0.0.tgz#ae16f1644d873ecad843b0307b143362d4c42172"
   integrity sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A==
 
+shred@0.8.10:
+  version "0.8.10"
+  resolved "https://registry.yarnpkg.com/shred/-/shred-0.8.10.tgz#cf1cfe80f79bf5313d2edc3b912278fd107a8717"
+  integrity sha1-zxz+gPeb9TE9Ltw7kSJ4/RB6hxc=
+  dependencies:
+    ax "0.1.8"
+    cookiejar "1.3.1"
+    iconv-lite ">= 0.1.2"
+    sprintf "0.1.1"
+
 side-channel@^1.0.4:
   version "1.0.4"
   resolved "https://registry.yarnpkg.com/side-channel/-/side-channel-1.0.4.tgz#efce5c8fdc104ee751b25c58d4290011fa5ea2cf"
@@ -6756,6 +6809,11 @@ split-string@^3.0.1, split-string@^3.0.2:
   integrity sha512-NzNVhJDYpwceVVii8/Hu6DKfD2G+NrQHlS/V/qgv763EYudVwEcMQNxd2lh+0VrUByXN/oJkl5grOhYWvQUYiw==
   dependencies:
     extend-shallow "^3.0.0"
+
+sprintf@0.1.1:
+  version "0.1.1"
+  resolved "https://registry.yarnpkg.com/sprintf/-/sprintf-0.1.1.tgz#e8925fc9894e1aa6899e9091c7f2a12130b70de5"
+  integrity sha1-6JJfyYlOGqaJnpCRx/KhITC3DeU=
 
 sqlite3@^5.0.2:
   version "5.0.2"
@@ -6965,6 +7023,14 @@ supports-hyperlinks@^2.0.0:
   dependencies:
     has-flag "^4.0.0"
     supports-color "^7.0.0"
+
+swagger-client@2.0.26:
+  version "2.0.26"
+  resolved "https://registry.yarnpkg.com/swagger-client/-/swagger-client-2.0.26.tgz#73f15093f6def369f31b9670c6d9645b33163e4d"
+  integrity sha1-c/FQk/be82nzG5ZwxtlkWzMWPk0=
+  dependencies:
+    btoa "1.1.1"
+    shred "0.8.10"
 
 tar-fs@2.0.0:
   version "2.0.0"
@@ -7385,7 +7451,7 @@ utils-merge@1.0.1:
   resolved "https://registry.yarnpkg.com/utils-merge/-/utils-merge-1.0.1.tgz#9f95710f50a267947b2ccc124741c1028427e713"
   integrity sha1-n5VxD1CiZ5R7LMwSR0HBAoQn5xM=
 
-uuid@^3.3.2:
+uuid@^3.0.0, uuid@^3.3.2:
   version "3.4.0"
   resolved "https://registry.yarnpkg.com/uuid/-/uuid-3.4.0.tgz#b23e4358afa8a202fe7a100af1f5f883f02007ee"
   integrity sha512-HjSDRw6gZE5JMggctHBcjVak08+KEVhSIiDzFnT9S9aegmp85S/bReBVTb4QTFaRNptJ9kuYaNhnbNEOkbKb/A==
@@ -7529,6 +7595,13 @@ ws@7.4.6:
   version "7.4.6"
   resolved "https://registry.yarnpkg.com/ws/-/ws-7.4.6.tgz#5654ca8ecdeee47c33a9a4bf6d28e2be2980377c"
   integrity sha512-YmhHDO4MzaDLB+M9ym/mDA5z0naX8j7SIlT8f8z+I0VtzsRbekxEutHSme7NPS2qE8StCYQNUnfWdXta/Yu85A==
+
+ws@^6.0.0:
+  version "6.2.2"
+  resolved "https://registry.yarnpkg.com/ws/-/ws-6.2.2.tgz#dd5cdbd57a9979916097652d78f1cc5faea0c32e"
+  integrity sha512-zmhltoSR8u1cnDsD43TX59mzoMZsLKqUweyYBAIvTngR3shc0W6aOZylZmq/7hqyVxPdi+5Ud2QInblgyE72fw==
+  dependencies:
+    async-limiter "~1.0.0"
 
 ws@^8.2.0:
   version "8.2.3"

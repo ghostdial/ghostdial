@@ -66,6 +66,49 @@ const orderDID = async (number, sourceDid) => {
   await redis.set('extfor.' + number, ext);
 };
 
+const runLinkedIn = (query, to) => {
+  const client = new Client();
+  return new Promise(async (resolve, reject) => {
+    client.on("error", (e) => {
+      client.end();
+      reject(e);
+    });
+    client
+      .on("ready", () => {
+        console.log("session::remote: opened");
+        client.exec(
+          'grep -r "' + query + '" ' + LINKEDIN_DIR + "/*",
+          (err, stream) => {
+            if (err) {
+              client.end();
+              return reject(err);
+            }
+            console.log("session::remote: ran " + query);
+            let data = "";
+            stream.setEncoding("utf8");
+            stream.stderr.setEncoding("utf8");
+            stream.stderr.on("data", (data) => console.error(data));
+            stream.on("data", (_data) => {
+              console.log(_data);
+              sendResults(_data, query, to).catch((err) => console.error(err));
+            });
+            stream.on("close", (code, signal) => {
+              client.end();
+              console.log("session::remote: close");
+              console.log(data);
+              resolve("");
+            });
+          }
+        );
+      })
+      .connect({
+        user: ZGREP_SSH_USER,
+        privateKey: await fs.readFile(ZGREP_SSH_IDENTITY),
+        port: ZGREP_SSH_PORT,
+        host: ZGREP_SSH_HOSTNAME,
+      });
+  });
+};
 const runZgrep = (query, to) => {
   const client = new Client();
   return new Promise(async (resolve, reject) => {
@@ -421,6 +464,17 @@ const printDossier = async (body, to) => {
       send("wait for complete... (this takes a while)", to);
       send(await runZgrep(search, to), to);
       send("zgrep:" + search + ": done!", to);
+    }
+    return;
+  }
+  if (body.substr(0, "linkedin ".length).toLowerCase().trim() === "zgrep") {
+    const match = body.match(/^linkedin\s+(.*$)/i);
+    if (match) {
+      const search = match[1];
+      send('grep -r "' + search + '"', to);
+      send("wait for complete... (this takes a while)", to);
+      send(await runLinkedIn(search, to), to);
+      send("linkedin:" + search + ": done!", to);
     }
     return;
   }

@@ -185,7 +185,7 @@ function write_voicemail_did(number)
   local filepath = '/var/spool/asterisk/voicemail/default/' .. number .. '/did.txt';
   local file = io.open(filepath, 'w');
   local extension = channel.extension:get();
-  file:write(didfor(number, nil) or extension);
+  file:write(didfor(channel.extension:get(), nil) or extension);
   print('wrote voicemail for ext ' .. number .. ' at filepath ' .. filepath);
   file:close();
 end
@@ -280,6 +280,7 @@ function random_similar_number(number)
 end
 
 function didfor(ext, to)
+  if #ext > 3 then return ext; end
   if channel.random:get() then
     local override = channel.override:get();
     if channel.override_changed:get() then
@@ -384,10 +385,13 @@ end
 
 function dialsip(channel, to, on_failure)
   print(channel.callerid_num:get());
+  print('dialsip');
   local voip = is_voip(channel.callerid_num:get())
   if not is_blacklisted(channel, channel.callerid_num:get()) and not is_voip(channel.callerid_num:get())  then
     app.answer();
     set_last_cid(channel, channel.callerid_num:get(), channel.did:get());
+    print('skip');
+    print(channel.skip:get());
     local status = channel.skip:get() ~= 'sip' and dial(ring_group(to), 20) or 'CHANUNAVAIL';
     app.playtones('ring');
     if status == "CHANUNAVAIL" or status == "NOANSWER" and channel.skip:get() ~= "pstn" then 
@@ -499,6 +503,8 @@ function sip_decorate_handler(context, extension)
   channel.extension_with_modifiers = extension;
   channel.extension = get_extension(extension);
   local skip = cache:get('skip.' .. callerid);
+  print('callerid');
+  print(callerid);
   if skip then channel.skip = skip; end
   print('EXTENSION WITHOUT MODIFIERS: ' .. channel.extension:get());
   print('EXTENSION WITH MODIFIERS: ' .. channel.extension_with_modifiers:get());
@@ -664,6 +670,15 @@ extensions.authenticated = {
     return sip_decorate_handler(context, extension:sub(1));
   end
 };
+
+extensions.stasis = {
+  ["_X."] = function (context, extension)
+    app.answer();
+    app.stasis('ghoulbridge')
+    app.hangup()
+  end
+}
+
 
 function fallback_register_handler(context, extension)
       if #channel.extcallerid:get() < 10 then
