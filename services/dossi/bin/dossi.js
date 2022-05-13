@@ -38,6 +38,14 @@ const sendResults = async (results, query, to) => {
     await new Promise((resolve, reject) => setTimeout(resolve, 300));
   }
 };
+const sendLinkedInResults = async (results, query, to) => {
+  const lines = results.split("\n").map((v) => v.substr(v.indexOf('{')));
+  const chunks = lodash.chunk(lines, 50);
+  for (const chunk of chunks) {
+    send(chunk.join("\n"), to);
+    await new Promise((resolve, reject) => setTimeout(resolve, 300));
+  }
+};
 
 const searchDIDs = async (query) => {
   const processed = piplQueryToObject(query);
@@ -77,7 +85,7 @@ const runLinkedIn = (query, to) => {
       .on("ready", () => {
         console.log("session::remote: opened");
         client.exec(
-          'grep -r "' + query + '" ' + LINKEDIN_DIR + "/*",
+          'grep -r "' + query + '" ' + process.env.LINKEDIN_DIR + "/*",
           (err, stream) => {
             if (err) {
               client.end();
@@ -89,8 +97,7 @@ const runLinkedIn = (query, to) => {
             stream.stderr.setEncoding("utf8");
             stream.stderr.on("data", (data) => console.error(data));
             stream.on("data", (_data) => {
-              console.log(_data);
-              sendResults(_data, query, to).catch((err) => console.error(err));
+              sendLinkedInResults(_data, query, to).catch((err) => console.error(err));
             });
             stream.on("close", (code, signal) => {
               client.end();
@@ -467,10 +474,10 @@ const printDossier = async (body, to) => {
     }
     return;
   }
-  if (body.substr(0, "linkedin ".length).toLowerCase().trim() === "zgrep") {
+  if (body.substr(0, "linkedin".length).toLowerCase().trim() === "linkedin") {
     const match = body.match(/^linkedin\s+(.*$)/i);
     if (match) {
-      const search = match[1];
+      const search = match[1].toLowerCase();
       send('grep -r "' + search + '"', to);
       send("wait for complete... (this takes a while)", to);
       send(await runLinkedIn(search, to), to);
