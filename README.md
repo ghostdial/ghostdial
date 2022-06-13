@@ -4,6 +4,176 @@ Ghostdial is the communications framework designed for Project Ghost, a project 
 
 Ghostdial is a replacement for the worldwide phone systems we are used to. It is designed to run on a single server and consists of the following services, run on the system in parallel
 
+## Using ghostdial
+
+If you've been onboarded to project ghost, then congratulations, ghost! Your life will now be exciting and action packed. You will need to set up ghostdial, to get started.
+
+You need to install a SIP client to make secure calls and an XMPP client to use SMS/MMS/voicemail/dossi.
+
+Here is a breakdown of the apps you will use:
+
+| Platform | SIP Client | XMPP Client |
+| ----------- | ----------- | ----------- |
+| Android | Zoiper | Conversations (F-Droid version) |
+| iOS | Acrobits Groundwire | Siskin IM |
+| Linux | linphone | dino-im |
+| Mac OSX | linphone | Gajim |
+| Windows | linphone | Gajim |
+
+Any SIP or XMPP client can work, but a lot of the others have poor support nowadays.
+
+To connect to the SIP server with the SIP client, use
+
+Generic SIP account
+username: <your project ghost extension>
+password: <your project ghost password>
+domain: <ask a team member for the domain>
+port: 35061
+
+Change only the following settings in the SIP account, and leave the others unchanged in your client:
+
+NAT Traversal:
+STUN Server: <ask a team member for STUN server info>
+STUN Port: 443
+
+Encryption/Secure Calls:
+SRTP: Enabled/Best Effort
+DTLS: Enabled/Best Effort (this option is not in Zoiper)
+
+Audio Codecs:
+Drag g.711 ulaw to the top, it is the only one that is used
+
+On your XMPP client, register a new account using your 10-digit number on the network:
+
+JID: <your 10-digit number>@<ask a team member for XMPP server>
+Password: <your project ghost password>
+
+You will receive SMS/MMS/voicemail here, and you will also be able to message dossi. dossi will message you a background check on any call that comes in.
+
+## dossi
+
+dossi is a command prompt. You can say the following things to dossi to get it to do things. We will use 4048609911 as a sample phone number, ghostguy as a sample username, and ghostguy@gmail.com as a sample E-mail:
+
+```sh
+You: 4048609911
+dossi: <carrier info for phone number>
+
+You: pipl 4048609911
+dossi: <background check on person who uses 4048609911>
+
+You: pipl ghostguy@gmail.com
+dossi: <background check on person who uses ghostguy@gmail.com>
+
+You: pipl raw_name:"Karl Ghostenheim" state:GA city:Atlanta
+dossi: <background check on Karl Ghostenheim that is most relevant to search terms>
+
+You: pipl raw_name:"Karl Ghostenheim" state:CA city:Marietta age:20-30
+dossi: <background check with narrower search terms>
+
+You: sherlock ghostguy
+dossi: <list of places the username ghostguy has been used, using the sherlock tool>
+
+You: whatsmyname ghostguy
+dossi: <list of places the username ghostguy has been used, using the whatsmyname tool>
+
+You: holehe ghostguy@gmail.com
+dossi: <list of places the email ghostguy@gmail.com has been used, using holehe>
+
+You: searchdids type:starts query:512 state:TX
+dossi: <list of phone numbers available to add to your extension>
+
+You: orderdid 4048609911
+dossi: <adds 4048609911 to the list of DIDs associated with your extension, be sure to create a new XMPP account for it to claim the number on the project ghost server!>
+
+```
+
+Other commands are available if needed, ask a ghost for details.
+
+## Making calls
+
+Use your SIP client to place calls over mobile data or Wi-Fi. It can work behind a VPN too, as long as it supports UDP (OpenVPN, ProtonVPN, etc).
+
+Calling a 3-digit extension for a ghost works. The call will be e2e encrypted.
+
+Placing a regular phone call works, too. It will ring using your default ghost number.
+
+To place a call from a different number, dial the number you want to show up on the caller ID first, followed by the number you want to reach. For example, if I want to call 4045550001 using the number 4047770001, then I would dial
+
+40477700014045550001
+
+Technically, you can use any number as the source number, and it will spoof it no matter what. Just take care to spoof valid area codes and a valid triplet following the area code, or your call may be blocked.
+
+To save an extension you can dial
+
+\*\*<extension to save>\*<dial string>
+
+It will save it for everyone on project ghost, so if you want to share a contact to a ghost, it is possible to simply save an extension for it. The extension you save can be a 20-digit spoof dial as well, for convenience.
+
+For example, to make it so if someone on project ghost dials 404, it will spoof 4047770001 and call 4045550001, you can dial
+
+\*\*404\*40477700014045550001
+
+If you just want to make it so when someone dials 404 it will use their own number to dial 4045550001, you would dial
+
+\*\*404\*4045550001
+
+If it works, the call will simply end
+
+### Dialing from a regular dialer
+
+Sometimes, as a ghost, your phone will get struck by a bullet and it won't be able to be used after that. You will perhaps have a backup flip phone in case this happens. You can dial into project ghost from any phone, luckily. Here is the process:
+
+1. Dial your own 10-digit ghost number
+2. When it begins to ring, press # in the first 6 seconds
+3. When you hear a dial tone, dial your ghost extension, your ghost PIN, and then the dial string you want to place as if you were dialing from your SIP client
+
+Any ghostdial dial string will work after your extension and PIN, so you can save extensions, spoof numbers, and dial numbers from your ghost number all the same.
+
+You will want to know how to use the "add 2s wait" feature to a dial with your phone's dialer, so you can dial everything all at once, instead of having to wait for the proper tones and quickly enter the correct sequence into your dialer. On Android and Tracfone there is an options menu available while you are dialing which has a "add 2s wait" button. On iOS, sometimes, you have to hold the # button to get access to the "," symbol. A comma symbol in a regular dial string means "add 2s wait".
+
+When you dial in with your phone dialer instead of a SIP client, there are a couple important things to know. The choice of which 10-digit number that you dial to dial into the system matters. Without entering the number to spoof it explicitly, ghostdial will use the number that you dialed in through as the caller ID for any call you place.
+
+There are also 4 special extensions you can use when dialing in from a phone dialer. There is
+
+- \*9  register the calling number to receive calls for your extension over the phone lines, as a fallback, if there is no answer on the SIP client
+- \*90  unregister any number that is registered to receive fallback calls
+- \*8  register the calling number to receive text messages for your extension over pure SMS/MMS
+- \*80  unregister any number that is registered to receive fallback SMS/MMS
+
+For example, if I am able to find a Tracfone at a drug store, near where I am taking shelter from a firefight, then I am in luck. If my ghost number is 4048609911, my ghost extension is 404, and my ghost PIN is 888888, then I can dial
+
+4048609911,#,404888888\*9
+
+Now the Tracfone will receive calls, until I can get a proper ghost phone set up again.
+
+But, if I need to call for reinforcements, and I know that ghost 779 is nearby, I can dial him at
+
+4048609911,#,404888888779
+
+779's SIP client will ring and he will see 404 on his caller ID, as if I were using a SIP client. He will respond with air support and the operation will succeed. Freedom is saved. Good work, ghost.
+
+
+### Fallback SMS/MMS
+
+When you receive fallback SMS/MMS, it will always text you from your own ghost number. The number that received the message from outside project ghost will be used to relay the message to the number registered with extension \*8
+
+Each message that comes in will be prefixed with a 4-digit number, which indicates a unique source phone number.
+
+If you see a message like this, you can use the `tag` command to enumerate the source number, or you can respond to it by prefixing a response to the thread with that tag.
+
+```sh
+4048609911: (8542) Hello, do you need air support
+You: tag 8542
+4048609911: 4048609911:4041012223
+// ^this indicates we are receiving the text from 4041012223, and to reply to this number, we use the 8542 prefix
+You: 8542 No, I don't, but I appreciate it
+// ^This responds to the 4041012223 number, using the 4048609911 as the sender. Rverything except for the 8542 tag is sent.
+```
+
+## Running a ghostdial server
+
+The ghostdial backend consists of the following components
+
 - redis
 - asterisk (SIP/telephony server)
   - ghostdial/extensions.lua (LUA script that defines how inbound / outbound calls are handled)
@@ -11,62 +181,10 @@ Ghostdial is a replacement for the worldwide phone systems we are used to. It is
   - ghostdial/prosody_mod_sms (translates SMS/MMS from the Redis pipeline into XMPP messages)
 - ghostdial/sms_pipeline (nodejs process which sends SMS/MMS between Redis and an external VoIP service)
 - ghostdial/voicemail_pipeline (nodejs process which retrieves voicemail from asterisk, uploads to IPFS, uses Google Cloud to transcribe the audio into a written message, then forwards the transcript and audio file as an XMPP message to the user's telephone number as it is registered on prosody)
-- ghostdial/registry (nodejs process which can be queried over HTTP to resolve a phone number to another ghostdial server, used for routing outbound calls, and validating inbound calls)
+- ghostdial/dossi (nodejs process for intelligence support in the XMPP service)
 - coturn (Used for NAT traversal)
 
-
-## Usage
-
-Acquire SSL certificates for your hostname, acquire ghostdial SIP credentials, then run the stack in docker-compose.
-
-For voice, use Zoiper Premium (Android), Linphone (Ubuntu, Mac, Windows), or Acrobits Groundwire (iOS) to connect to extension@your.host:35061 over TLS with STUN enabled and set to 157.230.88.72:3478 and audio codec set to g.711 (ulaw). Turn SRTP encryption on.
-
-For messaging, use Conversations (Android), Gajim (Windows), Beagle IM (Mac OSX), Dino (Linux), or Siskin IM (iOS) to connect to phonenumber@your.host over XMPP with TLS and OMEMO enabled to connect to the messaging service.
-
-On your voice app, you can operate as many numbers as you've registered from your single extension. When a call comes through, ghostdial will prepend the callerid with the phone number that the call is coming through, followed by the caller's name and number. Ghostdial will remember the number that the caller called through, and when you dial that person back, ghostdial will use the number they called to call them back. If you want to explicitly set your calling number to one of your other numbers, you dial <desired callerid><other party>. For example, if I want to use my number 3088889099 to dial 2028089999 then I would dial 30888890992028089999. The next time I want to call 2028089999 I can simply dial that number, and ghostdial will remember to use 3088889099.
-
-On your messaging app, you can message other ghostdial servers number@other.host to communicate with them, and the entire stream is encrypted. You will receive voicemail from voicemail@your.host and you can send SMS/MMS by sending messages to number@sms.your.host
-
-
-# Usage from a cellphone
-
-You can use ghostdial even with a flip phone without mobile data. You call your own ghost number, and as soon as you hear ringing, you dial # to get to a dialtone on the internal system
-
-You must dial your extension + your PIN + the extension you want to reach. For example, if my public number is 3055551234 and I want to reach my friend at extension 555, and if my extension is 444 and PIN is 3221, I would dial
-
-3055551234,#,4443221555
-
-Where the , indicates a 2s wait period. Note that on mobile phones or even many flip phones, there is an option in the dialer to add a 2s wait so you can put this comma in in your dial directly to avoid having to rush to input the tones after the call to your public number connects.
-
-To dial using your public number to a regular phone number (let's use 3051235432 as an example) it works similarly
-
-3055551234,#,44432213051235432
-
-If you have multiple numbers, and you want to use a specific one, you will dial the number you want to dial out from followed by the number you want to reach. Say the number I want to use is 3051112222 and I want to reach 3051235432. I Would dial
-
-3055551234,#,444322130511122223051235432
-
-It is a long dial, but it works!
-
-Everything that works from the SIP app can be accessed this way via your extension by dialing in and entering your extension and PIN first in the sequence you want to dial on the internal system.
-
-The built-in extensions are:
-
-```
-*89 Voicemail set-up / Change PIN
-*69 Dial last caller to your extension
-*9 Register the calling phone to be the phone that receives calls if your SIP line cannot be reached, it will hang up on you if it worked
-*97576281313 Forward calls to 7576281313 from now on
-*90 Clear forwarding rule and only take calls via SIP or voicemail
-
-```
-
-You can save your own set of extensions too:
-```
-*#133#75762813137575548198 // from now on you can dial 133 to use the number 7576281313 to dial 7575548198
-
-*#133# // erase extension
-```
+Run these on a VPS using the files included in this repo, and connect using SIP or XMPP
 
 ## Author
 Ghostdial LLC
