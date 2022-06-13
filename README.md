@@ -76,6 +76,12 @@ dossi: <list of places the username ghostguy has been used, using the sherlock t
 You: whatsmyname ghostguy
 dossi: <list of places the username ghostguy has been used, using the whatsmyname tool>
 
+You: socialscan ghostguy
+dossi: <list of places the username ghostguy has been used, using the whatsmyname tool>
+
+You: socialscan ghostguy@gmail.com
+dossi: <list of places the username ghostguy has been used, using the whatsmyname tool>
+
 You: holehe ghostguy@gmail.com
 dossi: <list of places the email ghostguy@gmail.com has been used, using holehe>
 
