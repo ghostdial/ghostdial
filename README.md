@@ -119,6 +119,10 @@ If you just want to make it so when someone dials 404 it will use their own numb
 
 If it works, the call will simply end
 
+### Changing PIN
+
+Dial extension \*89 to get to the voicemail setup. The voicemail PIN functions as your PIN across project ghost, for dialing in from your regular phone dialer, as well.
+
 ### Dialing from a regular dialer
 
 Sometimes, as a ghost, your phone will get struck by a bullet and it won't be able to be used after that. You will perhaps have a backup flip phone in case this happens. You can dial into project ghost from any phone, luckily. Here is the process:
