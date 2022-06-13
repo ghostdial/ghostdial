@@ -1,6 +1,6 @@
 # ghostdial
 
-Ghostdial is the communications framework designed for Project Ghost, a project written by ghosts, for ghosts.
+Ghostdial is the communications framework designed for project ghost, a project written by ghosts, for ghosts.
 
 Ghostdial is a replacement for the worldwide phone systems we are used to. It is designed to run on a single server and consists of the following services, run on the system in parallel
 
@@ -25,15 +25,15 @@ Any SIP or XMPP client can work, but a lot of the others have poor support nowad
 To connect to the SIP server with the SIP client, use
 
 Generic SIP account
-username: <your project ghost extension>
-password: <your project ghost password>
-domain: <ask a team member for the domain>
+username: \<your project ghost extension\>
+password: \<your project ghost password\>
+domain: \<ask a team member for the domain\>
 port: 35061
 
 Change only the following settings in the SIP account, and leave the others unchanged in your client:
 
 NAT Traversal:
-STUN Server: <ask a team member for STUN server info>
+STUN Server: \<ask a team member for STUN server info\>
 STUN Port: 443
 
 Encryption/Secure Calls:
@@ -45,8 +45,8 @@ Drag g.711 ulaw to the top, it is the only one that is used
 
 On your XMPP client, register a new account using your 10-digit number on the network:
 
-JID: <your 10-digit number>@<ask a team member for XMPP server>
-Password: <your project ghost password>
+JID: \<your 10-digit number\>@\<ask a team member for XMPP server\>
+Password: \<your project ghost password\>
 
 You will receive SMS/MMS/voicemail here, and you will also be able to message dossi. dossi will message you a background check on any call that comes in.
 
@@ -105,7 +105,7 @@ Technically, you can use any number as the source number, and it will spoof it n
 
 To save an extension you can dial
 
-\*\*<extension to save>\*<dial string>
+\*\*\<extension to save\>\*\<dial string\>
 
 It will save it for everyone on project ghost, so if you want to share a contact to a ghost, it is possible to simply save an extension for it. The extension you save can be a 20-digit spoof dial as well, for convenience.
 
