@@ -2,8 +2,6 @@
 
 Ghostdial is the communications framework designed for project ghost, a project written by ghosts, for ghosts.
 
-Ghostdial is a replacement for the worldwide phone systems we are used to. It is designed to run on a single server and consists of the following services, run on the system in parallel
-
 ## Using ghostdial
 
 If you've been onboarded to project ghost, then congratulations, ghost! Your life will now be exciting and action packed. You will need to set up ghostdial, to get started.
