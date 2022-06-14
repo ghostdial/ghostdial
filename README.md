@@ -176,7 +176,7 @@ If you see a message like this, you can use the `tag` command to enumerate the s
 You: tag 8542
 4048609911: 4048609911:4041012223
 // ^this indicates we are receiving the text from 4041012223, and to reply to this number, we use the 8542 prefix
-You: 8542 No, I don't, but I appreciate it
+You: 8542 Sorry, wrong number
 // ^This responds to the 4041012223 number, using the 4048609911 as the sender. Rverything except for the 8542 tag is sent.
 ```
 
