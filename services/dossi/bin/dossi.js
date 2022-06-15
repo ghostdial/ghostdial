@@ -205,15 +205,19 @@ const runZgrepFull = (query, to) => {
 
 
 const piplQueryToObject = (query) => {
-  return query
-    .match(/([^\s:]+):((?:"((?:[^"\\]|\\[\s\S])*)")|(?:\S+))/g)
-    .map((v) =>
-      v.split(":").map((v) => (v.substr(0, 1) === '"' ? JSON.parse(v) : v))
-    )
-    .reduce((r, [key, value]) => {
+  try {
+    return query
+      .match(/([^\s:]+):((?:"((?:[^"\\]|\\[\s\S])*)")|(?:\S+))/g)
+      .map((v) =>
+        v.split(":").map((v) => (v.substr(0, 1) === '"' ? JSON.parse(v) : v))
+      )
+      .reduce((r, [key, value]) => {
       r[key] = value;
       return r;
-    }, {});
+      }, {});
+  } catch (e) {
+    return {};
+  }
 };
 
 const spookyStuff = [

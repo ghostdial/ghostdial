@@ -7221,7 +7221,7 @@ trim-newlines@^3.0.0:
 
 "truepeoplesearch-puppeteer@https://github.com/freelogstudio/truepeoplesearch-puppeteer":
   version "1.0.0"
-  resolved "https://github.com/freelogstudio/truepeoplesearch-puppeteer#b67d3b7519c5ad97513193fe24419fa320729443"
+  resolved "https://github.com/freelogstudio/truepeoplesearch-puppeteer#f807a3a4d1bc332e659d7fc0e250e8aeea256d0f"
   dependencies:
     puppeteer "^10.4.0"
     puppeteer-extra "^3.2.3"
