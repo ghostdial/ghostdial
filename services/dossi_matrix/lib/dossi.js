@@ -605,21 +605,6 @@ const printDossier = async (body, to) => {
         return;
       }
     }
-  } else if (/(?:^\d{10,11}$)/.test(body)) {
-  } else if (body.match(/\w+/g).length === 3) {
-    const [first_name, last_name, region] = body.match(/\w+/g);
-    send(
-      JSON.stringify(
-        await personEnrich(first_name, last_name, region),
-        null,
-        2
-      ),
-      to
-    );
-    await talkGhastly(to);
-  } else if (body.match(/^(?:SELECT|next)/g)) {
-    await personSearch(to, body);
-    await talkGhastly(to);
   }
 };
 
@@ -628,7 +613,7 @@ exports.startDossi = async () => {
   const cryptoStorage = new sdk.RustSdkCryptoStorageProvider("cryptoStorage");
   const _client = await new sdk.MatrixAuth(
     "https://" + process.env.MATRIX_HOMESERVER
-  ).passwordLogin("dossi", "getemdossi", "dossi");
+  ).passwordLogin("dossi", process.env.MATRIX_PASSWORD, "dossi");
   let accessToken = _client.accessToken;
   client = new sdk.MatrixClient(
     "https://" + process.env.MATRIX_HOMESERVER,
