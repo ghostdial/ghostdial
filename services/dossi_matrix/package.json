@@ -16,7 +16,7 @@
     "fs-extra": "^10.0.0",
     "knex": "^0.95.10",
     "lua.vm.js": "^0.0.1",
-    "matrix-bot-sdk": "^0.5.19",
+    "aidan-matrix-bot-sdk": "^1.0.1",
     "matrix-js-sdk": "^18.1.0",
     "request": "^2.88.2",
     "sqlite3": "^5.0.2",

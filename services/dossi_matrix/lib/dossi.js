@@ -7,7 +7,7 @@ const pipl = require("@ghostdial/pipl");
 const voipms = require('@ghostdial/voipms');
 const fs = require("fs-extra");
 const faxvin = require('faxvin-puppeteer');
-const sdk = require('matrix-bot-sdk');
+const sdk = require('aidan-matrix-bot-sdk');
 const { Client } = require("ssh2");
 
 const path = require("path");
@@ -232,9 +232,7 @@ const from = "@dossi:" + process.env.MATRIX_HOMESERVER;
 
 const { createClient } = require('matrix-js-sdk').default;
 
-const client = new sdk.MatrixClient('https://' + process.env.MATRIX_HOMESERVER, process.env.MATRIX_ACCESS_TOKEN, new sdk.SimpleFsStorageProvider('dossi-matrix.json'));
-
-sdk.AutojoinRoomsMixin.setupOnClient(client);
+var client;
 
 const send = async (msg, to) => {
   await client.sendMessage(to, {
@@ -626,12 +624,37 @@ const printDossier = async (body, to) => {
 };
 
 exports.startDossi = async () => {
+  const storage = new sdk.SimpleFsStorageProvider("simpleStorage");
+  const cryptoStorage = new sdk.RustSdkCryptoStorageProvider("cryptoStorage");
+  const _client = await new sdk.MatrixAuth(
+    "https://" + process.env.MATRIX_HOMESERVER
+  ).passwordLogin("dossi", "getemdossi", "dossi");
+  let accessToken = _client.accessToken;
+  client = new sdk.MatrixClient(
+    "https://" + process.env.MATRIX_HOMESERVER,
+    accessToken,
+    storage,
+    cryptoStorage
+  );
+
+  sdk.AutojoinRoomsMixin.setupOnClient(client);
   await client.start();
-  console.log('client started!');
-  client.on('room.message', async (roomId, event) => {
+  console.log("client started!");
+  client.on("room.message", async (roomId, event) => {
     if (!event.content) return;
-    const { sender, content: { body } } = event;
-    if (sender.match('dossi')) return;
+    const {
+      sender,
+      content: { body },
+    } = event;
+    if (sender.match("dossi")) return;
     await printDossier(body, roomId);
+    console.log(event);
+    if (body.startsWith("!echo")) {
+      const replyText = body.substring("!echo".length).trim();
+      client.sendMessage(roomId, {
+        msgtype: "m.notice",
+        body: "echo!",
+      });
+    }
   });
 };
