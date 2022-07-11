@@ -1,8 +1,0 @@
-{
-  "rooms": {
-    "151499ea699c793408e5072c6e0e4fdc140e99e085e9fe1598ef07997581738596d91b33966d02236f1733987ba55377fc84e168027488d32f9bf7b2b89a8dbc": {
-      "algorithm": "m.megolm.v1.aes-sha2"
-    }
-  },
-  "deviceId": "MIKPXRGSYU"
-}
