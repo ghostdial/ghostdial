@@ -27,6 +27,7 @@ const FAXVIN_DEFAULT_STATE = process.env.FAXVIN_DEFAULT_STATE;
 const lodash = require("lodash");
 const truepeoplesearch = require('truepeoplesearch-puppeteer');
 const facebook = require('facebook-recover-puppeteer');
+const os = require('os')
 
 const sendResults = async (results, query, to) => {
   const lines = results.split("\n");
@@ -609,11 +610,11 @@ const printDossier = async (body, to) => {
 };
 
 exports.startDossi = async () => {
-  const storage = new sdk.SimpleFsStorageProvider("simpleStorage");
-  const cryptoStorage = new sdk.RustSdkCryptoStorageProvider("cryptoStorage");
+  const storage = new sdk.SimpleFsStorageProvider("./storage");
+  const cryptoStorage = new sdk.RustSdkCryptoStorageProvider('./cryptoStorage');
   const _client = await new sdk.MatrixAuth(
     "https://" + process.env.MATRIX_HOMESERVER
-  ).passwordLogin("dossi", process.env.MATRIX_PASSWORD, "dossi");
+  ).passwordLogin("testdossi", process.env.MATRIX_PASSWORD, "testdossi");
   let accessToken = _client.accessToken;
   client = new sdk.MatrixClient(
     "https://" + process.env.MATRIX_HOMESERVER,
