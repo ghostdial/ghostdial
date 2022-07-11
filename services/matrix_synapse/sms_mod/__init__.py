@@ -71,14 +71,28 @@ class SmsModule:
                    red.lrem('sms-in', 1, value)
                    global fakeUser
                    fakeUser = self._api.register(decoded['from'] + '.' + decoded['to'])
-                  # requests.request(method='PUT')
+                # http request  
+                #    self._api.create_and_send_event_into_room(
+                #        {
+                #            "state_key":"",
+                #            "type":"m.room.create",
+                #            "sender": fakeUser[0],
+                #            "content": {
+                #                "creater": fakeUser[0],
+                #                "room_version": '9',
+                #            }
+                #        }
+                #    )
+                   # Get room info
                    self._api.create_and_send_event_into_room(
                        {
                            "room_id": "",
                            "state_key": "",
                            "type": "m.room.message",
                            "sender": fakeUser[0],
-                           "content": decoded['message']
+                           "content": {
+                            "body": decoded['message']
+                           }
                        }
                    )
                    
