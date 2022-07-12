@@ -10,6 +10,10 @@ const faxvin = require('faxvin-puppeteer');
 const sdk = require('aidan-matrix-bot-sdk');
 const { Client } = require("ssh2");
 
+const OpenAI = require('openai-api');
+
+const openai = new OpenAI(process.env.OPENAI_API_KEY || '');
+
 const path = require("path");
 const mkdirp = require("mkdirp");
 
@@ -50,6 +54,20 @@ const searchDIDs = async (query) => {
   const processed = piplQueryToObject(query);
   const result = await voipms.fromEnv().searchDIDsUSA.get(processed);
   return (result.dids || []).map((v) => v.did);
+};
+
+const answerQuestion = async (question, to) => {
+  const gptResponse = await openai.answers({
+    documents: ["The year is 2022."],
+    question,
+    search_model: "davinci",
+    model: "davinci",
+    examples_context: "In 2017, U.S. life expectancy was 78.6 years.",
+    examples: [["What is human life expectancy in the United States?", "78 years."]],
+    max_tokens: 80,
+    stop: ["\n", "<|endoftext|>"],
+  });
+  await send(gptResponse.data, to);
 };
 
 const orderDID = async (number, sourceDid) => {
@@ -605,6 +623,10 @@ const printDossier = async (body, to) => {
         return;
       }
     }
+  }
+  if (body.substr(0, 'answer:'.length) === 'answer') {
+    await answerQuestion(body.substr('answer:'.length), to);
+    return;
   }
 };
 

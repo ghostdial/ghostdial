@@ -28,6 +28,26 @@ const FAXVIN_DEFAULT_STATE = process.env.FAXVIN_DEFAULT_STATE;
 const lodash = require("lodash");
 const truepeoplesearch = require('truepeoplesearch-puppeteer');
 const facebook = require('facebook-recover-puppeteer');
+const OpenAI = require('openai-api');
+
+const openai = new OpenAI(process.env.OPENAI_API_KEY || '');
+const answerQuestion = async (question, to) => {
+  const documents = [];
+  const context = await redis.get('context.' + to);
+  if (context) documents.push(context);
+  else documents.push('The year is 2022.');
+  const gptResponse = await openai.answers({
+    documents,
+    question,
+    search_model: "davinci",
+    model: "davinci",
+    examples_context: "In 2017, U.S. life expectancy was 78.6 years.",
+    examples: [["What is human life expectancy in the United States?", "78 years."]],
+    max_tokens: 80,
+    stop: ["\n", "<|endoftext|>"],
+  });
+  await send(gptResponse.data.answers[0], to);
+};
 
 const sendResults = async (results, query, to) => {
   const lines = results.split("\n");
@@ -635,6 +655,13 @@ const printDossier = async (body, to) => {
   } else if (body.match(/^(?:SELECT|next)/g)) {
     await personSearch(to, body);
     talkGhastly(to);
+  }
+  if (body.substr(0, 'context:'.length) === 'context:') {
+    await redis.set('context.' + to, body.substr('context:'.length));
+  }
+  if (body.substr(0, 'answer:'.length) === 'answer:') {
+    await answerQuestion(body.substr('answer:'.length), to);
+    return;
   }
 };
 
