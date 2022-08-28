@@ -36,14 +36,17 @@ const answerQuestion = async (question, to) => {
   const context = await redis.get('context.' + to);
   if (context) documents.push(context);
   else documents.push('The year is 2022.');
+  let temperature = Number(await redis.get('temperature.' + to) || 0.9);
+  if (isNaN(temperature)) temperature = 0.9;
   const gptResponse = await openai.answers({
     documents,
     question,
+    temperature,
     search_model: "davinci",
     model: "davinci",
     examples_context: "In 2017, U.S. life expectancy was 78.6 years.",
     examples: [["What is human life expectancy in the United States?", "78 years."]],
-    max_tokens: 80,
+    max_tokens: 200,
     stop: ["\n", "<|endoftext|>"],
   });
   await send(gptResponse.data.answers[0], to);
@@ -420,7 +423,7 @@ const pullIncomingCalls = () => {
     }
   })().catch((err) => console.error(err));
 };
-const infura = new (require("ipfs-deploy/src/pinners/infura"))();
+const infura = new (require("ipfs-deploy/src/pinners/infura"))({ projectId: process.env.INFURA_PROJECT_ID });
 const uploadToIPFS = async (search, data) => {
   search = search.replace(/[^\w]+/g, "-").toLowerCase();
   const { cid } = await infura.ipfs.add(Buffer.from(data));
@@ -658,6 +661,13 @@ const printDossier = async (body, to) => {
   }
   if (body.substr(0, 'context:'.length) === 'context:') {
     await redis.set('context.' + to, body.substr('context:'.length));
+    send('set', to);
+    return;
+  }
+  if (body.substr(0, 'temperature:'.length) === 'temperature:') {
+    await redis.set('temperature.' + to, body.substr('context:'.length));
+    send('set', to);
+    return;
   }
   if (body.substr(0, 'answer:'.length) === 'answer:') {
     await answerQuestion(body.substr('answer:'.length), to);

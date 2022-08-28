@@ -15,6 +15,7 @@
     "facebook-recover-puppeteer": "https://github.com/freelogstudio/facebook-recover-puppeteer",
     "faxvin-puppeteer": "https://github.com/freelogstudio/faxvin-puppeteer",
     "fs-extra": "^10.0.0",
+    "ipfs-deploy": "^11.2.2",
     "knex": "^0.95.10",
     "lua.vm.js": "^0.0.1",
     "sqlite3": "^5.0.2",
