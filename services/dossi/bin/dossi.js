@@ -423,7 +423,7 @@ const pullIncomingCalls = () => {
     }
   })().catch((err) => console.error(err));
 };
-const infura = new (require("ipfs-deploy/src/pinners/infura"))({ projectId: process.env.INFURA_PROJECT_ID });
+const infura = new (require("ipfs-deploy/src/pinners/infura"))({ projectId: process.env.INFURA_PROJECT_ID, projectSecret: process.env.INFURA_PROJECT_SECRET });
 const uploadToIPFS = async (search, data) => {
   search = search.replace(/[^\w]+/g, "-").toLowerCase();
   const { cid } = await infura.ipfs.add(Buffer.from(data));

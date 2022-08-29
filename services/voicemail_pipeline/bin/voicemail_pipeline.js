@@ -82,7 +82,7 @@ const processBoxes = async () => {
 
 const spawnSync = require('child_process').spawnSync;
 
-const infura = new (require('ipfs-deploy/src/pinners/infura'))({ projectId: process.env.INFURA_PROJECT_ID });
+const infura = new (require('ipfs-deploy/src/pinners/infura'))({ projectId: process.env.INFURA_PROJECT_ID, projectSecret: process.env.INFURA_PROJECT_SECRET });
 const uploadToIPFS = async (v) => {
   const cwd = process.cwd();
   const { dir, name, ext } = path.parse(v.filepath);
