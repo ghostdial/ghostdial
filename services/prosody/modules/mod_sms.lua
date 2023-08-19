@@ -408,6 +408,7 @@ function sms_to_stanzas(sms)
   for _, attachment in ipairs(sms.attachments or {}) do
     table.insert(result, st.message({ from=sms.from .. '@' .. component_host, to=sms.to .. '@pyrosec.gg', type='chat'  }):tag('active', { xmlns="http://jabber.org/protocol/chatstates" }):up():tag('body'):text(attachment):up():tag('x', { xmlns="jabber:x:oob" }):tag('url'):text(attachment):up():up());
   end
+  print(json.encode(sms));
   if sms.message ~= '' then table.insert(result, st.message({ from=(sms['from'] .. '@sms.pyrosec.gg'), to=(sms['to'] .. '@pyrosec.gg'), type='chat' }):tag('active', { xmlns = 'http://jabber.org/protocol/chatstates' }):up():tag('body'):text(sms.message)) end
   return result;
 end

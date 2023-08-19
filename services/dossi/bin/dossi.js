@@ -8,7 +8,7 @@ const xid = require("@xmpp/id");
 const pipl = require("@ghostdial/pipl");
 const voipms = require('@ghostdial/voipms');
 const fs = require("fs-extra");
-const faxvin = require('faxvin-puppeteer');
+const { FaxvinPuppeteer } = require('faxvin-puppeteer');
 const { Client } = require("ssh2");
 
 const path = require("path");
@@ -26,7 +26,7 @@ const VOIPMS_POP = process.env.VOIPMS_POP;
 const ZGREP_MAX_RESULTS = Number(process.env.ZGREP_MAX_RESULTS || 1000);
 const FAXVIN_DEFAULT_STATE = process.env.FAXVIN_DEFAULT_STATE;
 const lodash = require("lodash");
-const truepeoplesearch = require('truepeoplesearch-puppeteer');
+const { TruePuppeteer } = require('truepeoplesearch-puppeteer');
 const facebook = require('facebook-recover-puppeteer');
 const OpenAI = require('openai-api');
 
@@ -44,8 +44,8 @@ const answerQuestion = async (question, to) => {
     temperature,
     search_model: "davinci",
     model: "davinci",
-    examples_context: "In 2017, U.S. life expectancy was 78.6 years.",
-    examples: [["What is human life expectancy in the United States?", "78 years."]],
+    examples_context: "The Scarlet Letter by Nathaniel Hawthorne, adulteress Hester Prynne must wear a scarlet A to mark her shame. Her lover, Arthur Dimmesdale, remains unidentified and is wracked with guilt, while her husband, Roger Chillingworth, seeks revenge. The Scarlet Letter's symbolism helps create a powerful drama in Puritan Boston: a kiss, evil, sin, nature, the scarlet letter, and the punishing scaffold. Nathaniel Hawthorne's masterpiece is a classic example of the human conflict between emotion and intellect.",
+    examples: [["What is the reason women would have to wear a scarlet A embroidered on their clothing in Puritan Boston?", "They would wear the scarlet A if they committed adultery."], ["What is the surname of the unidentified man who Hester cheated on Roger with?", "The unidentified man is named Dimmesdale."], ["What should I say to Hester?", "Don't worry about the haters. Roger is a trick, and there's no proof adultery is a sin."]],
     max_tokens: 200,
     stop: ["\n", "<|endoftext|>"],
   });
@@ -436,26 +436,31 @@ const uploadToIPFS = async (search, data) => {
 const callerId = async (number, to) => {
   const twilioResults = await twilioLookup(number);
   send(JSON.stringify(twilioResults, null, 2), to);
-  await piplNumberLookup(number, to);
 };
 
 const lookupTruePeopleSearchQuery = async (query) => {
+  const truepeoplesearch = await TruePuppeteer.initialize({ noSandbox: true, logger: { info(v) { console.log(v); } } });
+  let result = null;
   if (query.match(/^\d+$/)) {
-    return await truepeoplesearch.byPhone(query);
+    result = await truepeoplesearch.searchPhone({ phone: query });
   } else {
     const processed = piplQueryToObject(query);
     if (processed.streetaddress) {
-      return await truepeoplesearch.byAddress(processed);
+      result = await truepeoplesearch.searchAddress(processed);
     } else {
-      return await truepeoplesearch.byName(processed);
+      result = await truepeoplesearch.searchName(processed);
     }
   }
+  await truepeoplesearch._browser.close();
+  return result;
 };
 
 const lookupFaxVinQuery = async (query) => {
-  if (!query.match(/:/)) return await faxvin.lookupPlate({ state: FAXVIN_DEFAULT_STATE, plate: query });
+  const faxvin = await FaxvinPuppeteer.initialize({ noSandbox: true, logger: { info(v) { console.log(v); } } });
   const processed = piplQueryToObject(query);
-  return await faxvin.lookupPlate(processed);
+  const result = await faxvin.searchPlate(query);
+  await faxvin.close();
+  return result;
 };
 
 const printDossier = async (body, to) => {

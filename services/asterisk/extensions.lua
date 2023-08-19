@@ -30,6 +30,7 @@ function inbound_handler(context, extension)
   channel.did = did;
   channel.ext = ext;
   channel.sipuser = ext;
+  channel.skip = cache:get('skip.' .. ext) or '';
   local sipuser = ext;
   app.mixmonitor(did .. '-' .. channel['CALLERID(num)']:get() .. '-' .. channel.UNIQUEID:get() .. '.wav', 'ab');
   channel.callerid_num = channel['CALLERID(num)']:get();
@@ -390,8 +391,7 @@ function dialsip(channel, to, on_failure)
   if not is_blacklisted(channel, channel.callerid_num:get()) and not is_voip(channel.callerid_num:get())  then
     app.answer();
     set_last_cid(channel, channel.callerid_num:get(), channel.did:get());
-    print('skip');
-    print(channel.skip:get());
+    app.playtones('ring');
     local status = channel.skip:get() ~= 'sip' and dial(ring_group(to), 20) or 'CHANUNAVAIL';
     app.playtones('ring');
     if status == "CHANUNAVAIL" or status == "NOANSWER" and channel.skip:get() ~= "pstn" then 
