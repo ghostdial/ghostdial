@@ -109,12 +109,14 @@ function smsuser:register(bjid)
 	reguser.jid = bjid;
 	reguser.data = datamanager.load(bjid, component_host, "data") or { roster= {} };
 	users[bjid] = reguser;
+	users[bjid]:store();
 	return reguser;
 end
 
 function smsuser:initialize(bjid)
 	local user = smsuser:register(bjid);
 	user:store();
+	users[bjid] = user;
 end
 
 -- Store (save) the user object
@@ -178,8 +180,9 @@ end
 
 function tick()
   local data = connection:lpop('sms-in');
+  function run() handle_message(data) end;
   if (data ~= nil) then
-    handle_message(data);
+    pcall(run);
     tick();
   else
     timer.add_task(10, function ()
@@ -408,8 +411,9 @@ function sms_to_stanzas(sms)
   for _, attachment in ipairs(sms.attachments or {}) do
     table.insert(result, st.message({ from=sms.from .. '@' .. component_host, to=sms.to .. '@pyrosec.gg', type='chat'  }):tag('active', { xmlns="http://jabber.org/protocol/chatstates" }):up():tag('body'):text(attachment):up():tag('x', { xmlns="jabber:x:oob" }):tag('url'):text(attachment):up():up());
   end
-  print(json.encode(sms));
+  module:log("info", json.encode(sms.message));
   if sms.message ~= '' then table.insert(result, st.message({ from=(sms['from'] .. '@sms.pyrosec.gg'), to=(sms['to'] .. '@pyrosec.gg'), type='chat' }):tag('active', { xmlns = 'http://jabber.org/protocol/chatstates' }):up():tag('body'):text(sms.message)) end
+  module:log("info", json.encode(sms));
   return result;
 end
 
@@ -428,4 +432,4 @@ module:hook("iq/host", iq_handle);
 module:hook("message/host", message_handle);
 --module:hook("presence/host", presence_handle);
 
-tick();
+timer.add_task(15, function () tick() end);

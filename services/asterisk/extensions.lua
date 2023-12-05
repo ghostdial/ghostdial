@@ -123,7 +123,7 @@ function pstn_fallback_dial(channel)
   print('dialing');
   local match = number:find('#%*(.*)')
   app.stopplaytones();
-  local status = dial('SIP/' .. outbound .. '/' .. get_number_from_dial(number), 20, 'U(detect_voicemail,s,1)g' .. get_dial_argument(number));
+  local status = dial('SIP/' .. outbound .. '/' .. get_number_from_dial(number), 40, 'U(detect_voicemail,s,1)g' .. get_dial_argument(number));
   print(status);
   set_callerid(channel, callerid_num);
   channel['CALLERID(name)'] = callerid_name;
@@ -362,8 +362,9 @@ function coerce_to_did(number)
 end
  
 function hit_em_wit_jg_real_quick(channel)
+  print("JG MODE ENGAGE 🔥");
   local sipuser = channel.sipuser:get();
-  if sipuser == "101" then
+  if sipuser == "303" then
     if #channel.callerid_num:get() == 10 then 
       channel.immutable_callerid = '1';
     end
