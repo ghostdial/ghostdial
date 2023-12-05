@@ -536,7 +536,7 @@ const readSipAccounts = async () => {
 
 const writeSipAccounts = async (sipAccounts) => {
   await fs.writeFileSync('/etc/asterisk/sip.conf', buildConfiguration(sipAccounts));
-  const proc = child_process.spawn('bash', ['-c', 'asterisk -rx "sip reload"; asterisk -rx "voicemail reload"]);
+  const proc = child_process.spawn('bash', ['-c', 'asterisk -rx "sip reload"; asterisk -rx "voicemail reload"']);
   return await new Promise((resolve, reject) => proc.on('close', (code) => {
     if (code !== 0) return reject(Error('non-zero exit code: ' + String(code)));
     return resolve();
