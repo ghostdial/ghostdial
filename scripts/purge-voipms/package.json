@@ -1,0 +1,16 @@
+{
+  "name": "purge-voipms",
+  "version": "0.1.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "cross-env node bin/purge-voipms"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "nice-repl": "^0.1.2"
+  },
+  "dependencies": {
+    "moment": "^2.29.1"
+  }
+}

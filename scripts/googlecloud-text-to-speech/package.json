@@ -1,0 +1,13 @@
+{
+  "name": "googlecloud-text-to-speech",
+  "version": "0.1.0",
+  "description": "google cloud text to speech",
+  "main": "index.js",
+  "repository": "https://github.com/ghostdial/ghostdial",
+  "author": "Ghostdial LLC",
+  "license": "MIT",
+  "private": false,
+  "dependencies": {
+    "@google-cloud/text-to-speech": "^3.2.2"
+  }
+}

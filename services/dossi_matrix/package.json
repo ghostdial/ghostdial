@@ -1,0 +1,34 @@
+{
+  "name": "dossi-matrix",
+  "version": "0.1.0",
+  "description": "intelligence bot used to build dossiers",
+  "main": "index.js",
+  "repository": "https://github.com/ghostdial/ghostdial",
+  "author": "Ghostdial LLC",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "start": "cross-env node bin/dossi"
+  },
+  "dependencies": {
+    "aidan-matrix-bot-sdk": "^1.0.1",
+    "facebook-recover-puppeteer": "https://github.com/freelogstudio/facebook-recover-puppeteer",
+    "faxvin-puppeteer": "https://github.com/freelogstudio/faxvin-puppeteer",
+    "fs-extra": "^10.0.0",
+    "knex": "^0.95.10",
+    "lua.vm.js": "^0.0.1",
+    "matrix-js-sdk": "^18.1.0",
+    "openai-api": "^1.3.1",
+    "request": "^2.88.2",
+    "sqlite3": "^5.0.2",
+    "ssh2": "^1.3.0",
+    "tmpdir": "^1.0.1",
+    "truepeoplesearch-puppeteer": "https://github.com/freelogstudio/truepeoplesearch-puppeteer",
+    "twilio": "^3.65.0"
+  },
+  "devDependencies": {
+    "colors": "^1.4.0",
+    "cross-env": "^7.0.3",
+    "nice-repl": "^0.1.2"
+  }
+}

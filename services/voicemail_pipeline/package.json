@@ -1,0 +1,29 @@
+{
+  "name": "@ghostdial/voicemail_pipeline",
+  "version": "0.1.0",
+  "description": "asterisk voicemail to xmpp",
+  "main": "index.js",
+  "repository": "https://github.com/ghostdial/voicemail_pipeline",
+  "author": "Ghostdial LLC",
+  "scripts": {
+    "start": "cross-env node bin/voicemail_pipeline"
+  },
+  "bin": {
+    "voicemail_pipeline": "./bin/voicemail_pipeline"
+  },
+  "license": "MIT",
+  "private": false,
+  "dependencies": {
+    "@google-cloud/speech": "^4.5.2",
+    "@google-cloud/storage": "^5.8.5",
+    "@xmpp/client": "^0.12.0",
+    "@xmpp/debug": "^0.12.0",
+    "ipfs-deploy": "^11.2.2",
+    "lodash": "^4.17.21",
+    "mkdirp": "^1.0.4",
+    "yargs": "^17.0.1"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3"
+  }
+}

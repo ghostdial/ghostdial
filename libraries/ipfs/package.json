@@ -1,0 +1,8 @@
+{
+  "name": "ipfs",
+  "version": "0.1.0",
+  "description": "ipfs pipe",
+  "main": "lib/pipe.js",
+  "license": "MIT",
+  "private": false
+}

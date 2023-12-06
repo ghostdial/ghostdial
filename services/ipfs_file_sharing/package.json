@@ -1,0 +1,25 @@
+{
+  "name": "ipfs_file_sharing",
+  "version": "0.1.0",
+  "description": "prosody http_file_share backend that pipes to ipfs",
+  "main": "index.js",
+  "repository": "https://github.com/ghostdial/ghostdial",
+  "author": "Ghostdial LLC",
+  "scripts": {
+    "start": "cross-env node bin/ipfs_file_sharing"
+  },
+  "license": "MIT",
+  "private": false,
+  "dependencies": {
+    "express": "^4.17.1",
+    "express-jwt": "^6.0.0",
+    "fs-extra": "^10.0.0",
+    "ipfs-deploy": "^10.1.0",
+    "mime-types": "^2.1.32",
+    "mkdirp": "^1.0.4",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3"
+  }
+}
