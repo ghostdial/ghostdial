@@ -8,6 +8,7 @@ exports.run = void 0;
 const lodash_1 = __importDefault(require("lodash"));
 const fs_extra_1 = __importDefault(require("fs-extra"));
 const debug_1 = __importDefault(require("@xmpp/debug"));
+const crypto_1 = __importDefault(require("crypto"));
 const path_1 = __importDefault(require("path"));
 const mkdirp_1 = __importDefault(require("mkdirp"));
 const client_1 = require("@xmpp/client");
@@ -15,6 +16,7 @@ const transcript_1 = require("./transcript");
 const storage_1 = require("./storage");
 const logger_1 = require("./logger");
 const yargs_1 = __importDefault(require("yargs"));
+const serviceaccount = require(process.env.GOOGLE_APPLICATION_CREDENTIALS);
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 const voicemailDirectory = process.env.VOICEMAIL_DIRECTORY || '/var/spool/asterisk/voicemail/default';
 const filename = yargs_1.default.argv._[0];
@@ -72,10 +74,26 @@ async function upload(v) {
     const cwd = process.cwd();
     const { dir, name, ext } = path_1.default.parse(v.filepath);
     const bucket = await storage_1.storage.bucket(storage_1.BUCKET_NAME);
+    const contentType = 'audio/wav';
+    const filename = 'filename=' + name + '.wav';
+    const contentDisposition = 'attachment';
+    const metadata = {
+        contentType,
+        contentDisposition: contentDisposition + '; ' + filename
+    };
+    const headers = {
+        contentType,
+        contentDisposition
+    };
+    const hash = '0x' + crypto_1.default.randomBytes(32).toString('hex');
     const [file] = await bucket.upload(v.filepath, {
-        destination: name
+        destination: hash,
+        contentDisposition,
+        contentType,
+        metadata,
+        headers
     });
-    return file.metadata.mediaLink;
+    return await file.getSignedUrl({ version: 'v2', action: 'read', expires: Date.now() * 2, client_email: serviceaccount.client_email });
 }
 ;
 function cleanBox(extension) {

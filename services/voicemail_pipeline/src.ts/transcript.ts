@@ -19,11 +19,9 @@ async function makeTranscript(filepath) {
   const audio = {
     uri: 'gs://' + BUCKET_NAME + '/tmp'
   };
-  const [ { results: [ { alternatives } ] } ] = await (speech as any).recognize({
-    config,
-    audio
-  });
-  return (alternatives[0] || {}).transcript;
+  const result = await (speech as any).recognize({ config, audio });
+  const alternatives = ((((result || [])[0] || {}).results || [])[0] || {}).alternatives || [];
+  return (alternatives[0] || {}).transcript || '';
 };
 async function makeLongTranscript(filepath) {
   const bucket = await storage.bucket(BUCKET_NAME);
