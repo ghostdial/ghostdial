@@ -37,7 +37,7 @@ const customFormatter = ({ level, message, label, timestamp }) => {
   }`;
 };
 
-interface GhostLogger extends ReturnType<typeof createWinstonLogger> {
+export interface GhostLogger extends ReturnType<typeof createWinstonLogger> {
   star(v: any): GhostLogger;
 }
 

@@ -4,6 +4,7 @@ import { Storage } from "@google-cloud/storage";
 import { SpeechClient } from "@google-cloud/speech";
 const speech = new SpeechClient();
 import { storage, BUCKET_NAME } from "./storage";
+import { logger } from "./logger";
 
 async function makeTranscript(filepath) {
   const bucket = await storage.bucket(BUCKET_NAME);
@@ -49,7 +50,7 @@ export async function getTranscript(parcel) {
   try {
     parcel.transcript = await makeTranscript(parcel.filepath);
   } catch  (e) {
-    console.error(e);
+    logger.error(e);
     parcel.transcript = '';
   }
   return parcel;

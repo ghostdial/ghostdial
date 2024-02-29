@@ -10,6 +10,7 @@ import { client, xml } from "@xmpp/client";
 import { getTranscript } from "./transcript";
 import { spawnSync } from "child_process";
 import { BUCKET_NAME, storage } from "./storage";
+import { logger } from "./logger";
 import yargs from "yargs";
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
@@ -28,7 +29,7 @@ const toParcel = (extension, messageBasename) => {
   try {
     did = fs.readFileSync(path.join(voicemailDirectory, extension, 'did.txt'), 'utf8').trim();
   } catch (e) {
-    console.error(e);
+    logger.error(e);
     did = extension;
   }
   return {
@@ -45,15 +46,16 @@ async function processBox(xmpp, extension) {
   await mkdirp(path.join(voicemailDirectory, extension, 'INBOX'));
   const parcels = lodash.uniqBy(fs.readdirSync(path.join(voicemailDirectory, extension, 'INBOX')), (v) => path.parse(v).name).map((v) => toParcel(extension, path.parse(v).name));
   for (const message of parcels) {
-    console.log('processing ' + message.name + ' for ' + message.extension);
+    logger.info('processing ' + message.name + ' for ' + message.extension);
     await getTranscript(message);
-    console.log('got transcript')
-    await upload(message);
-    console.log('uploaded to ipfs');
+    logger.info('got transcript')
+    const url = await upload(message);
+    message.url = url;
+    logger.info('uploaded to ipfs');
     const to = message.did + '@' + process.env.DOMAIN;
     const from = 'voicemail@' + process.env.DOMAIN;
-    console.log(message);
-    console.log({ to, from });
+    logger.info(message);
+    logger.info({ to, from });
     await xmpp.send(xml('presence', { to, from }));
     await xmpp.send(xml('message', { to, from }, xml('body', {}, 'New voicemail from ' + message.callerid + ':\n' + (message.transcript || '<no transcript could be loaded>'))));
     await xmpp.send(xml('message', { to, from }, [ xml('body', {}, message.url), xml('x', { xmlns: 'jabber:x:oob' }, xml('url', {}, message.pinned)) ]));
@@ -75,10 +77,10 @@ async function upload(v) {
   const cwd = process.cwd();
   const { dir, name, ext } = path.parse(v.filepath);
   const bucket = await storage.bucket(BUCKET_NAME);
-  console.log(await bucket.upload('/tmp/' + name + '.' + ext, {
+  const [ file ] = await bucket.upload(v.filepath, {
     destination: name
-  }));
-  return 'https://storage.net/1.mp3';
+  });
+  return file.metadata.mediaLink;
 };
 
 function cleanBox(extension) {
@@ -86,7 +88,7 @@ function cleanBox(extension) {
   files.forEach((v) => {
     fs.unlinkSync(path.join(voicemailDirectory, extension, 'INBOX', v));
   });
-  console.log(extension + ': cleaned!');
+  logger.info(extension + ': cleaned!');
 };
 
 export async function run() {
@@ -100,11 +102,11 @@ export async function run() {
   await xmpp.start();
   while (true) {
     try {
-      console.log('starting xmpp');
-      console.log('started!');
+      logger.info('starting xmpp');
+      logger.info('started!');
       await processBoxes(xmpp);
     } catch (e) {
-      console.error(e);
+      logger.error(e);
     }
     await new Promise((resolve) => setTimeout(resolve, 10000));
   }

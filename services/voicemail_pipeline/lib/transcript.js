@@ -4,6 +4,7 @@ exports.getTranscript = void 0;
 const speech_1 = require("@google-cloud/speech");
 const speech = new speech_1.SpeechClient();
 const storage_1 = require("./storage");
+const logger_1 = require("./logger");
 async function makeTranscript(filepath) {
     const bucket = await storage_1.storage.bucket(storage_1.BUCKET_NAME);
     await bucket.upload(filepath, {
@@ -50,7 +51,7 @@ async function getTranscript(parcel) {
         parcel.transcript = await makeTranscript(parcel.filepath);
     }
     catch (e) {
-        console.error(e);
+        logger_1.logger.error(e);
         parcel.transcript = '';
     }
     return parcel;
