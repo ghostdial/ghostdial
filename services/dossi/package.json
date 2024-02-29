@@ -8,7 +8,8 @@
   "license": "MIT",
   "private": false,
   "scripts": {
-    "start": "cross-env node bin/dossi"
+    "start": "cross-env node bin/dossi",
+    "build": "tsc"
   },
   "dependencies": {
     "@xmpp/client": "^0.12.0",
@@ -18,6 +19,7 @@
     "ipfs-deploy": "^11.2.2",
     "knex": "^0.95.10",
     "lua.vm.js": "^0.0.1",
+    "openai-api": "^1.3.1",
     "sqlite3": "^5.0.2",
     "ssh2": "^1.3.0",
     "tmpdir": "^1.0.1",
@@ -25,8 +27,10 @@
     "twilio": "^3.65.0"
   },
   "devDependencies": {
+    "@types/node": "^20.11.24",
     "colors": "^1.4.0",
     "cross-env": "^7.0.3",
-    "nice-repl": "^0.1.2"
+    "nice-repl": "^0.1.2",
+    "typescript": "^5.3.3"
   }
 }
