@@ -242,7 +242,6 @@ const talkGhastly = (to) => {
     send(spookyStuff[Math.floor(Math.random() * spookyStuff.length)], to);
 };
 let xmpp = null;
-(0, debug_1.default)(xmpp, true);
 const from = "dossi@" + process.env.DOMAIN;
 const send = (msg, to) => {
     xmpp.send((0, client_1.xml)("message", { to, from, id: (0, id_1.default)(), type: "chat" }, (0, client_1.xml)("body", {}, msg)));
@@ -796,13 +795,12 @@ async function run() {
         username: "dossi",
         password: process.env.ROOT_PASSWORD || "password",
     });
+    (0, debug_1.default)(xmpp, true);
     xmpp.on("online", () => {
         logger_1.logger.info("online!");
         xmpp.send((0, client_1.xml)("presence"));
     });
     xmpp.on("stanza", async (stanza) => {
-        logger_1.logger.info(stanza);
-        logger_1.logger.info(stanza.getChild("body"));
         if (!stanza.is("message"))
             return;
         if (!stanza.getChild("body"))

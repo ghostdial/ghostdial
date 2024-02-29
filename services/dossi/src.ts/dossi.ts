@@ -259,7 +259,6 @@ const talkGhastly = (to) => {
 
 let xmpp = null;
 
-debug(xmpp, true);
 const from = "dossi@" + process.env.DOMAIN;
 
 const send = (msg, to) => {
@@ -836,13 +835,12 @@ export async function run() {
     username: "dossi",
     password: process.env.ROOT_PASSWORD || "password",
   });
+  debug(xmpp, true);
   xmpp.on("online", () => {
     logger.info("online!");
     xmpp.send(xml("presence"));
   });
   xmpp.on("stanza", async (stanza) => {
-    logger.info(stanza);
-    logger.info(stanza.getChild("body"));
     if (!stanza.is("message")) return;
     if (!stanza.getChild("body")) return;
     const to = stanza.attrs.from;
