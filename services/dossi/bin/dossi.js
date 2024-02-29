@@ -314,7 +314,6 @@ const printPiplResult = async (search, result, to) => {
   result.possible_persons.forEach((v) => {
     delete v["@search_pointer"];
   });
-  send(await uploadToIPFS(search, JSON.stringify(result, null, 2)), to);
   const summary = { ...result };
   const data = JSON.stringify(summary, null, 2);  await new Promise((resolve, reject) => setTimeout(resolve, 1000));
 
@@ -422,16 +421,6 @@ const pullIncomingCalls = () => {
       await timeout(POLL_INTERVAL);
     }
   })().catch((err) => console.error(err));
-};
-const infura = new (require("ipfs-deploy/src/pinners/infura"))({ projectId: process.env.INFURA_PROJECT_ID, projectSecret: process.env.INFURA_PROJECT_SECRET });
-const uploadToIPFS = async (search, data) => {
-  search = search.replace(/[^\w]+/g, "-").toLowerCase();
-  const { cid } = await infura.ipfs.add(Buffer.from(data));
-  const result = await infura.pinCid(cid);
-  return (
-    "https://cloudflare-ipfs.com/ipfs/" + cid + "?filename=" + search + ".txt"
-  );
-  return v;
 };
 const callerId = async (number, to) => {
   const twilioResults = await twilioLookup(number);
@@ -734,8 +723,6 @@ const printDossier = async (body, to) => {
       const search = match[1];
       send("searchdids " + search, to);
       const dids = (await searchDIDs(search)).join(', ');
-      const link = await uploadToIPFS(search, dids);
-      send(link, to);
       send(dids, to);
     }
     return;

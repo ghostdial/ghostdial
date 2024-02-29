@@ -386,17 +386,19 @@ const pullAttachments = async (urls) => {
   return result;
 };
 
+//const ln = (v) => ((console.log(require('util').inspect(v, { colors: true, depth: 15 }))), v);
+
 const pollOneMMS = async () => {
   let last = Number(await redis.get("last-time"));
   if (!last || isNaN(last)) last = getUnix(); // initialize to now
   const now = getUnix();
   const to = Math.min(last + 60*60, now);
-  const response = await voipms.getMMS.get({
+  const response = await voipms.getMMS.get(({
     type: 1,
     all_messages: 1,
     from: fromUnix(last),
     to: fromUnix(to),
-  });
+  }));
   const { sms } = response;
   if (sms)
     await sms.reduce(async function pull(r, v, i, ary, count = 0) {
