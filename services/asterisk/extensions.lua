@@ -6,11 +6,20 @@ local json = require 'rapidjson';
 local ltn12 = require 'ltn12';
 local redis = require 'redis';
 
+function split_uri(uri)
+    local i = string.find(uri, ":");
+    return uri:sub(0, i - 1), uri:sub(i + 1);
+end
+
+function connect_redis()
+  local host, port = split_uri(os.getenv("REDIS_HOST") or "127.0.0.1:6379");
+  return redis.connect(host, port);
+end
+
 local lua_print = print;
 
-local cache = redis.connect('127.0.0.1', 6379)
+local cache = connect_redis();
 
-local registry = 'https://localhost:3050';
 
 local print = function (msg)
   app.verbose(msg);
@@ -334,18 +343,6 @@ function dial_outbound(channel, number)
   if not channel.immutable_callerid:get() then set_callerid(channel, channel.override and channel.override:get() or get_last_cid(number) or channel.did:get()); end;
   if extensions.inbound[number] then return extensions.inbound[number](context, number); end
   local response = {};
-  --[[
-  local ok, status = https.request({
-    url= registry .. '/resolve',
-    method= 'POST',
-    sink= ltn12.sink.table(response)
-  }, json.encode({
-    number=number
-  }));
-  local host = json.decode(response.response);
-  ]]
---  if not ok or status ~= 200 or host.status ~= 'success' then
--- 
   set_last_cid(channel, number, channel['CALLERID(num)']:get());
   return dial('SIP/' .. outbound .. '/' .. number);
  -- end
