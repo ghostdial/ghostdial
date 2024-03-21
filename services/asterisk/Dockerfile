@@ -1,7 +1,7 @@
 FROM debian:bookworm-slim
 WORKDIR /opt
 RUN apt-get update
-RUN apt-get install -y git gettext build-essential autoconf binutils automake bash sudo findutils less curl sngrep ngrep tcpdump libcap-dev libedit-dev libxml2-dev libsqlite3-dev libedit-dev libjansson-dev libssl-dev libxml2-dev patch uuid-dev
+RUN apt-get install -y git gettext build-essential autoconf binutils automake bash sudo findutils less curl sngrep ngrep tcpdump libcap-dev libedit-dev libxml2-dev libsqlite3-dev libedit-dev libjansson-dev libssl-dev libxml2-dev patch uuid-dev iproute2
 RUN git clone https://github.com/asterisk/asterisk
 WORKDIR /opt/asterisk
 RUN git checkout 20.5.0
@@ -16,7 +16,7 @@ RUN menuselect/menuselect \
        --enable chan_sip --enable res_srtp
 RUN make install
 COPY ./templates /templates
-COPY ./config /etc/asterisk
+COPY ./config /config
 COPY ./docker-entrypoint.sh /docker-entrypoint.sh
 COPY ./extensions.lua /config/extensions.lua
 WORKDIR /
