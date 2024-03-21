@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -eo pipefail
-
 # optional Docker environment variables
 ASTERISK_UID="${ASTERISK_UID:-}"
 ASTERISK_GID="${ASTERISK_GID:-}"
