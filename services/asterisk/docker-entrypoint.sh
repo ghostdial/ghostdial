@@ -18,7 +18,10 @@ function write_sip_conf() {
   export IPV4_ADDRESS=$(ip -4 addr show eth0 | grep --color=never -oP '(?<=inet\s)\d+(\.\d+){3}')
   cat /templates/sip.conf.tpl | envsubst > /etc/asterisk/sip.conf
 }
+
+export REDIS_HOST=$(echo $REDIS_URI | cut -d '/' -f 3)
 function echo_env() {
+  echo "REDIS_HOST: $REDIS_HOST"
   echo "EXTERN_IP: $EXTERN_IP"
   echo "VOIPMS_SIP_PROTOCOL: $VOIPMS_SIP_PROTOCOL"
   echo "VOIPMS_SIP_USERNAME: $VOIPMS_SIP_USERNAME"

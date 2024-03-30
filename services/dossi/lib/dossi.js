@@ -14,6 +14,7 @@ const fs_extra_1 = __importDefault(require("fs-extra"));
 const faxvin_puppeteer_1 = require("faxvin-puppeteer");
 const ssh2_1 = require("ssh2");
 const child_process_1 = __importDefault(require("child_process"));
+const ioredis_1 = require("ioredis");
 const path_1 = __importDefault(require("path"));
 const lodash_1 = __importDefault(require("lodash"));
 const truepeoplesearch_puppeteer_1 = require("truepeoplesearch-puppeteer");
@@ -27,8 +28,8 @@ const ZGREP_SSH_IDENTITY = process.env.ZGREP_SSH_IDENTITY ||
     path_1.default.join(process.env.HOME, ".ssh", "id_rsa");
 const ZGREP_SSH_USER = process.env.ZGREP_SSH_USER;
 const ZGREP_DIR = process.env.ZGREP_DIR;
-const VOIPMS_SUBACCOUNT = process.env.VOIPMS_SUBACCOUNT;
-const VOIPMS_POP = process.env.VOIPMS_POP;
+const VOIPMS_SUBACCOUNT = process.env.VOIPMS_SUBACCOUNT || process.env.VOIPMS_SIP_USERNAME;
+const VOIPMS_POP = process.env.VOIPMS_POP || 'atlanta1.voip.ms';
 const ZGREP_MAX_RESULTS = Number(process.env.ZGREP_MAX_RESULTS || 1000);
 const FAXVIN_DEFAULT_STATE = process.env.FAXVIN_DEFAULT_STATE;
 const openai = new openai_api_1.default(process.env.OPENAI_API_KEY || '');
@@ -352,7 +353,7 @@ const deleteNullKeys = (o) => {
     });
     return result;
 };
-const redis = new (require("ioredis"))();
+const redis = new ioredis_1.Redis(process.env.REDIS_URI || 'redis://127.0.0.1:6379');
 const timeout = (n) => new Promise((resolve) => setTimeout(resolve, n));
 const POLL_INTERVAL = 500;
 const toJid = ({ host, username }) => {

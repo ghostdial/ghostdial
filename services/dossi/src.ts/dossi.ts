@@ -10,6 +10,7 @@ import fs from "fs-extra";
 import { FaxvinPuppeteer } from "faxvin-puppeteer";
 import { Client } from "ssh2";
 import child_process from "child_process";
+import { Redis } from "ioredis";
 
 import path from "path";
 import { mkdirp } from "mkdirp";
@@ -27,8 +28,8 @@ const ZGREP_SSH_IDENTITY =
   path.join(process.env.HOME, ".ssh", "id_rsa");
 const ZGREP_SSH_USER = process.env.ZGREP_SSH_USER;
 const ZGREP_DIR = process.env.ZGREP_DIR;
-const VOIPMS_SUBACCOUNT = process.env.VOIPMS_SUBACCOUNT;
-const VOIPMS_POP = process.env.VOIPMS_POP;
+const VOIPMS_SUBACCOUNT = process.env.VOIPMS_SUBACCOUNT || process.env.VOIPMS_SIP_USERNAME;
+const VOIPMS_POP = process.env.VOIPMS_POP || 'atlanta1.voip.ms';
 const ZGREP_MAX_RESULTS = Number(process.env.ZGREP_MAX_RESULTS || 1000);
 const FAXVIN_DEFAULT_STATE = process.env.FAXVIN_DEFAULT_STATE;
 
@@ -385,7 +386,7 @@ const deleteNullKeys = (o) => {
   return result;
 };
 
-const redis = new (require("ioredis"))();
+const redis = new Redis(process.env.REDIS_URI || 'redis://127.0.0.1:6379');
 
 const timeout = (n) => new Promise((resolve) => setTimeout(resolve, n));
 const POLL_INTERVAL = 500;

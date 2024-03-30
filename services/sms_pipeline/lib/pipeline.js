@@ -9,6 +9,8 @@ const ethers_1 = require("ethers");
 const path_1 = __importDefault(require("path"));
 const voipms_1 = __importDefault(require("@ghostdial/voipms"));
 const logger_1 = require("./logger");
+const is_dst_1 = __importDefault(require("is-dst"));
+const ioredis_1 = require("ioredis");
 const SMPP_URL = process.env.SMPP_URL || "ssmpp://smpp.voip.ms:3550";
 const HTTP_FILE_SHARE_BASE_URL = process.env.HTTP_FILE_SHARE_BASE_URL;
 const HTTP_FILE_SHARE_SECRET = process.env.HTTP_FILE_SHARE_SECRET;
@@ -48,7 +50,7 @@ const initializeDatabase = async () => {
 const insertToDatabase = async (sms) => {
     await knex('messages').insert(Object.assign({}, sms, { attachments: JSON.stringify(sms.attachments || []), time: Math.floor(Date.now() / 1000) }));
 };
-const redis = new (require("ioredis"))();
+const redis = new ioredis_1.Redis(process.env.REDIS_URI || 'redis://localhost:6379');
 const connect = () => smpp_1.default.connect({ url: SMPP_URL });
 const SMS_OUT_CHANNEL = "sms-out";
 const SMS_IN_CHANNEL = "sms-in";
@@ -321,12 +323,14 @@ const handleSms = async (sms) => {
 };
 const POLL_INTERVAL = 10000;
 const moment = require("moment");
-const OFFSET = 3600 * 5;
+const getOffset = () => {
+    return ((0, is_dst_1.default)() ? 4 : 5) * 3600;
+};
 const fromUnix = (unix) => {
-    return moment(new Date((unix - OFFSET) * 1000)).format("YYYY-MM-DD HH:mm:ss");
+    return moment(new Date((unix - getOffset()) * 1000)).format("YYYY-MM-DD HH:mm:ss");
 };
 const toUnix = (dateString) => {
-    return Math.floor(Number(new Date(dateString)) / 1000) + OFFSET;
+    return Math.floor(Number(new Date(dateString)) / 1000) + getOffset();
 };
 const getUnix = () => {
     return Math.floor(Date.now() / 1000);

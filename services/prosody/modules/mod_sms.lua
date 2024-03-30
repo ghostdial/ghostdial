@@ -4,7 +4,17 @@ local st = require 'util.stanza';
 local jid_split = require 'util.jid'.split;
 local json = require 'util.json';
 
-local connection = redis.connect('127.0.0.1', 6379)
+function split_uri(uri)
+    local i = string.find(uri, ":");
+    return uri:sub(0, i - 1), uri:sub(i + 1);
+end
+
+function connect_redis()
+  local host, port = split_uri(os.getenv("REDIS_HOST") or "127.0.0.1:6379");
+  return redis.connect(host, port);
+end
+
+local connection = connect_redis();
 
 local timer = require 'util.timer';
 local config_get = require "core.configmanager".get;

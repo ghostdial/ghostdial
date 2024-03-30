@@ -1,0 +1,133 @@
+version: '3.3'
+services:
+  asterisk:
+    image: ghostdial/asterisk
+    build:
+      context: ./services/asterisk
+      dockerfile: Dockerfile
+    environment:
+      - EXTERNIP=${EXTERNIP}
+      - VOIPMS_SIP_USERNAME=${VOIPMS_SIP_USERNAME}
+      - VOIPMS_SIP_PASSWORD=${VOIPMS_SIP_PASSWORD}
+      - VOIPMS_SIP_HOST=${VOIPMS_SIP_HOST}
+      - VOIPMS_SIP_PORT=${VOIPMS_SIP_PORT}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - REDIS_URI=redis://redis:6379
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - asterisk:/var/spool/asterisk
+      - logs:/var/log
+    restart: unless-stopped
+  fail2ban:
+    image: ghostdial/fail2ban
+    build:
+      context: ./services/fail2ban
+      dockerfile: Dockerfile
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    network_mode: 'host'
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - VERBOSITY=-vv
+    volumes:
+      - logs:/var/log
+    restart: unless-stopped
+  prosody:
+    image: ghostdial/prosody
+    build:
+      context: ./services/prosody
+      dockerfile: Dockerfile
+    ports:
+      - 5222:5222/tcp
+    environment:
+      - REDIS_URI=redis://redis:6379
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - logs:/var/log
+    restart: unless-stopped
+  certbot:
+    image: certbot/cerbot
+    ports:
+      - 50080:50080/tcp
+    command: ["certonly", "--webroot", "--email", "${EMAIL}", "-d", "${DOMAIN}", "--agree-tos", "--no-eff-email": "--http-01-port", "50080", "--webroot-path", "/data/letsencrypt"]
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+    restart: unless-stopped
+  redis:
+    image: redis
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - redis:/data
+    restart: unless-stopped
+  sms_pipeline:
+    image: ghostdial/sms_pipeline
+    build:
+      context: ./
+      dockerfile: Dockerfile-sms
+    volumes:
+      - sms_pipeline:/data
+    environment:
+      - VOIPMS_USERNAME=${VOIPMS_API_USERNAME}
+      - VOIPMS_PASSWORD=${VOIPMS_API_PASSWORD}
+      - GHOST_NUMBER=8008888080
+      - SMS_SQLITE3_DATABASE=/data/sms.db
+      - REDIS_URI=redis://redis:6379
+    restart: unless-stopped
+  dossi:
+    image: ghostdial/sms_pipeline
+    build:
+      context: ./
+      dockerfile: Dockerfile-dossi
+    environment:
+      - DOMAIN=${DOMAIN}
+      - REDIS_URI=redis://redis:6379
+    restart: unless-stopped
+  voicemail_pipeline:
+    image: ghostdial/voicemail_pipeline
+    build:
+      context: ./
+      dockerfile: Dockerfile-voicemail
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/gcloud/serviceaccount.json
+      - DOMAIN=${DOMAIN}
+      - ROOT_PASSWORD=${ROOT_PASSWORD}
+    volumes:
+      - asterisk:/var/spool/asterisk
+      - gcloud:/gcloud
+      - prosody:/var/lib/prosody
+    restart: unless-stopped
+volumes:
+  redis:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${GHOSTDIAL_DATABASE}/redis
+  letsencrypt:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${GHOSTDIAL_DATABASE}/letsencrypt
+  asterisk:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${GHOSTDIAL_DATABASE}/asterisk
+  prosody:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${GHOSTDIAL_DATABASE}/prosody
+  logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${GHOSTDIAL_DATABASE}/logs
