@@ -19,6 +19,13 @@ function write_sip_conf() {
   cat /templates/sip.conf.tpl | envsubst > /etc/asterisk/sip.conf
 }
 
+function add_certs_group() {
+  groupadd -g ${CERTS_GID} letsencrypt -f 2> /dev/null
+  adduser asterisk letsencrypt 2> /dev/null
+  chown -R 0:${CERTS_GID} /etc/letsencrypt/*
+  chmod -R 770 /etc/letsencrypt/*
+}
+
 export REDIS_HOST=$(echo $REDIS_URI | cut -d '/' -f 3)
 function echo_env() {
   echo "REDIS_HOST: $REDIS_HOST"
@@ -79,6 +86,7 @@ chown -R $ASTERISK_USER /var/log/asterisk \
                            /var/run/asterisk \
                            /var/spool/asterisk ; \
 
+add_certs_group
 init_asterisk
 
 exec ${COMMAND}

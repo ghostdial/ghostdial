@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     environment:
       - ASTERISK_UID=1010
-      - ASTERISK_GID=7077
+      - ASTERISK_GID=7087
       - EXTERNIP=${EXTERNIP}
       - VOIPMS_SIP_USERNAME=${VOIPMS_SIP_USERNAME}
       - VOIPMS_SIP_PASSWORD=${VOIPMS_SIP_PASSWORD}
@@ -17,10 +17,14 @@ services:
       - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
       - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
       - REDIS_URI=redis://redis:6379
+      - DOMAIN=${DOMAIN}
+      - CERTS_GID=7077
     volumes:
       - letsencrypt:/etc/letsencrypt
       - asterisk:/var/spool/asterisk
       - logs:/var/log
+    depends_on:
+      - redis
     restart: unless-stopped
   fail2ban:
     image: ghostdial/fail2ban

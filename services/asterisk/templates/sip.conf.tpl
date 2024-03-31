@@ -1,5 +1,6 @@
 [general]
-externip=$EXTERN_IP
+externip=$EXTERNIP
+nat=force_rport,comedia
 localnet=$IPV4_ADDRESS/255.255.255.0
 tlsdontverifyserver=yes
 register => $VOIPMS_SIP_PROTOCOL://$VOIPMS_SIP_USERNAME:$VOIPMS_SIP_PASSWORD@$VOIPMS_SIP_HOST:$VOIPMS_SIP_PORT
@@ -10,7 +11,6 @@ bindport=35060
 tlsbindaddr=0.0.0.0:35061
 tlsenable=yes
 tlscertfile=/etc/letsencrypt/live/${DOMAIN}/fullchain.pem
-tlscafile=/etc/letsencrypt/live/${DOMAIN}/ca.pem
 tlsprivatekey=/etc/letsencrypt/live/${DOMAIN}/privkey.pem
 srvlookup=no
 qualify=no
