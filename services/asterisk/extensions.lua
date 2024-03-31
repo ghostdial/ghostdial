@@ -20,7 +20,6 @@ local lua_print = print;
 
 local cache = connect_redis();
 
-
 local print = function (msg)
   app.verbose(msg);
 end

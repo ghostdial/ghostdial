@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     environment:
       - ASTERISK_UID=1010
-      - ASTERISK_GID=1010
+      - ASTERISK_GID=7077
       - EXTERNIP=${EXTERNIP}
       - VOIPMS_SIP_USERNAME=${VOIPMS_SIP_USERNAME}
       - VOIPMS_SIP_PASSWORD=${VOIPMS_SIP_PASSWORD}
@@ -33,7 +33,7 @@ services:
     network_mode: 'host'
     environment:
       - PUID=1000
-      - PGID=1000
+      - PGID=7077
       - TZ=Etc/UTC
       - VERBOSITY=-vv
     volumes:
@@ -45,24 +45,30 @@ services:
       context: ./services/prosody
       dockerfile: Dockerfile
     ports:
-      - 5222:5222/tcp
-      - 5269:5269/tcp
-      - 5347:5347/tcp
-      - 5280:5280/tcp
-      - 5281:5281/tcp
-
+      - 5222:5222
+      - 5269:5269
+      - 5347:5347
+      - 5280:5280
+      - 5281:5281
     environment:
+      - CERTS_GID=7077
       - REDIS_URI=redis://redis:6379
       - DOMAIN=${DOMAIN}
+      - ROOT_PASSWORD=${ROOT_PASSWORD}
     volumes:
       - letsencrypt:/etc/letsencrypt
       - logs:/var/log
+      - prosody:/var/lib/prosody
+    depends_on:
+      - redis
     restart: unless-stopped
   certbot:
     image: certbot/certbot
     ports:
       - 80:80/tcp
     command: ["certonly", "--standalone", "--email", "${EMAIL}", "-d", "${DOMAIN}", "--agree-tos", "--no-eff-email"]
+    environment:
+      - CERTS_GID=7077
     volumes:
       - letsencrypt:/etc/letsencrypt
   redis:

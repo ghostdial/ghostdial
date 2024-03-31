@@ -179,11 +179,7 @@ authentication = "internal_plain"
 --  Logs info and higher to /var/log
 --  Logs errors to syslog also
 log = {
-	-- Log files (change 'info' to 'debug' for debug logs):
-	info = "/var/log/prosody/prosody.log";
-	error = "/var/log/prosody/prosody.err";
-	-- Syslog:
-	{ levels = { "error" }; to = "syslog";  };
+    {levels = {min = "debug"}, to = "console"};
 }
 
 -- Uncomment to enable statistics
@@ -236,12 +232,9 @@ https_certificate = "$TLS_CERTIFICATE"
 --
 --Component "gateway.example.com"
 --	component_secret = "password"
---[[
-http_default_host = "stomp.dynv6.net"
+http_default_host = "$DOMAIN"
 http_ports = { 5280 }
 http_interfaces = { "*" }
         
 https_ports = { 5281 }
 https_interfaces = { "*" }
-]]
-Include "conf.d/*.cfg.lua"

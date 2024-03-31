@@ -1,6 +1,6 @@
 FROM debian:10
-RUN apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+RUN apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         lsb-base \
         gettext \
         sudo \
@@ -9,28 +9,45 @@ RUN apt-get update \
         libidn11 \
         libicu63 \
         libssl1.1 \
-        lua-bitop \
-        lua-dbi-mysql \
-        lua-dbi-postgresql \
-        lua-dbi-sqlite3 \
-        lua-event \
-        lua-expat \
-        lua-filesystem \
-        lua-sec \
-        lua-socket \
-        lua-zlib \
-        lua5.1 \
         lua5.2 \
         openssl \
         ca-certificates \
         ssl-cert \
-        prosody \
-    && rm -rf /var/lib/apt/lists/*
-RUN mkdir -p /var/run/prosody && chown prosody:prosody /var/run/prosody
-COPY ./modules/mod_sms.lua /usr/lib/prosody/modules/mod_sms.lua
+        build-essential \
+        pkg-config \
+        wget \
+        liblua5.2-dev \
+        libidn11-dev\
+        libssl-dev \
+        luarocks \
+        libicu-dev \
+        libunbound-dev \
+        libexpat-dev
+RUN adduser --gecos "" --disabled-password --disabled-login prosody
+RUN luarocks install --lua-version 5.2 --tree /usr/local redis-lua
+RUN luarocks install --lua-version 5.2 --tree /usr/local luaunbound
+RUN luarocks install --lua-version 5.2 --tree /usr/local luafilesystem
+RUN luarocks install --lua-version 5.2 --tree /usr/local luasec
+WORKDIR /usr/src
+RUN wget https://github.com/libexpat/libexpat/releases/download/R_2_6_2/expat-2.6.2.tar.gz
+RUN tar xfvz expat-2.6.2.tar.gz
+WORKDIR /usr/src/expat-2.6.2
+RUN ./configure && make && make install
+RUN luarocks install --lua-version 5.2 --tree /usr/local luaexpat
+RUN mkdir -p /var/run/prosody && chown prosody /var/run/prosody
+RUN mkdir -p /usr/local/var/lib/prosody/custom_plugins
+WORKDIR /usr/src
+RUN wget https://prosody.im/downloads/source/prosody-0.12.4.tar.gz
+RUN tar xfvz prosody-0.12.4.tar.gz
+RUN mv prosody-0.12.4 ./prosody
+WORKDIR /usr/src/prosody
+RUN ./configure && make && make install
+RUN chown -R prosody /usr/local/var/lib/prosody
+RUN prosodyctl install --server=https://modules.prosody.im/rocks/ mod_cloud_notify
+COPY ./modules/mod_sms.lua /usr/local/lib/prosody/modules/mod_sms.lua
 COPY ./templates /templates
 COPY ./docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod 755 /docker-entrypoint.sh
-EXPOSE 80 443 5222 5269 5347 5280 5281
 ENV __FLUSH_LOG yes
-CMD ["bash", "/docker-entrypoint.sh"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["prosody", "-F"]

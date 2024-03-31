@@ -1,5 +1,6 @@
 -- Section for example.com
 
+
 VirtualHost "$DOMAIN"
 	enabled = true -- Remove this line to enable this host
 	-- Assign this host a certificate for TLS, otherwise it would use the one
@@ -12,7 +13,7 @@ VirtualHost "$DOMAIN"
 	}
 	disco_items = { { "upload.$DOMAIN" } }
 
-
---Component "sms.$DOMAIN" "sms"
-
 Component "upload.$DOMAIN" "http_file_share"
+
+Component "sms.$DOMAIN" "sms"
+
