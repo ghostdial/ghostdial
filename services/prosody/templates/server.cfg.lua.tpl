@@ -7,8 +7,8 @@ VirtualHost "$DOMAIN"
 	-- Note that old-style SSL on port 5223 only supports one certificate, and will always
 	-- use the global one.
 	ssl = {
-		key = "$TLS_PRIVATE_KEY"
-		certificate = ""$TLS_CERTIFICATE"
+		key = "$TLS_PRIVATE_KEY";
+		certificate = "$TLS_CERTIFICATE";
 	}
 	disco_items = { { "upload.$DOMAIN" } }
 

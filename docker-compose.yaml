@@ -6,9 +6,12 @@ services:
       context: ./services/asterisk
       dockerfile: Dockerfile
     environment:
+      - ASTERISK_UID=1010
+      - ASTERISK_GID=1010
       - EXTERNIP=${EXTERNIP}
       - VOIPMS_SIP_USERNAME=${VOIPMS_SIP_USERNAME}
       - VOIPMS_SIP_PASSWORD=${VOIPMS_SIP_PASSWORD}
+      - VOIPMS_SIP_PROTOCOL=${VOIPMS_SIP_PROTOCOL}
       - VOIPMS_SIP_HOST=${VOIPMS_SIP_HOST}
       - VOIPMS_SIP_PORT=${VOIPMS_SIP_PORT}
       - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
@@ -43,20 +46,25 @@ services:
       dockerfile: Dockerfile
     ports:
       - 5222:5222/tcp
+      - 5269:5269/tcp
+      - 5347:5347/tcp
+      - 5280:5280/tcp
+      - 5281:5281/tcp
+
     environment:
       - REDIS_URI=redis://redis:6379
+      - DOMAIN=${DOMAIN}
     volumes:
       - letsencrypt:/etc/letsencrypt
       - logs:/var/log
     restart: unless-stopped
   certbot:
-    image: certbot/cerbot
+    image: certbot/certbot
     ports:
-      - 50080:50080/tcp
-    command: ["certonly", "--webroot", "--email", "${EMAIL}", "-d", "${DOMAIN}", "--agree-tos", "--no-eff-email", "--http-01-port", "50080", "--webroot-path", "/data/letsencrypt"]
+      - 80:80/tcp
+    command: ["certonly", "--standalone", "--email", "${EMAIL}", "-d", "${DOMAIN}", "--agree-tos", "--no-eff-email"]
     volumes:
       - letsencrypt:/etc/letsencrypt
-    restart: unless-stopped
   redis:
     image: redis
     command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]

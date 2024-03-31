@@ -3,6 +3,7 @@ RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         lsb-base \
         gettext \
+        sudo \
         procps \
         adduser \
         libidn11 \
@@ -30,7 +31,6 @@ COPY ./modules/mod_sms.lua /usr/lib/prosody/modules/mod_sms.lua
 COPY ./templates /templates
 COPY ./docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod 755 /docker-entrypoint.sh
-CMD ["bash", "/docker-entrypoint.sh"]
 EXPOSE 80 443 5222 5269 5347 5280 5281
 ENV __FLUSH_LOG yes
-CMD ["prosodyctl", "start"]
+CMD ["bash", "/docker-entrypoint.sh"]

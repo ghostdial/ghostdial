@@ -201,7 +201,7 @@ log = {
 certificates = "certs"
 
 -- HTTPS currently only supports a single certificate, specify it here:
-https_certificate = $TLS_CERTIFICATE
+https_certificate = "$TLS_CERTIFICATE"
 
 ----------- Virtual hosts -----------
 -- You need to add a VirtualHost entry for each domain you wish Prosody to serve.
