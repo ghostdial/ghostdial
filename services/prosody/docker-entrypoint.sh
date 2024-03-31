@@ -3,7 +3,7 @@ set -e
 
 export REDIS_HOST=$(echo $REDIS_URI | cut -d '/' -f 3)
 
-data_dir_owner="$(stat -c %u "/var/lib/prosody/")"
+data_dir_owner="$(stat -c %u "/usr/local/var/lib/prosody/")"
 
 if [[ "$(id -u prosody)" != "$data_dir_owner" ]]; then
     usermod -u "$data_dir_owner" prosody

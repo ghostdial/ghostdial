@@ -61,7 +61,10 @@ async function processBox(xmpp, extension) {
         await xmpp.send((0, client_1.xml)('message', { to, from }, [(0, client_1.xml)('body', {}, message.url), (0, client_1.xml)('x', { xmlns: 'jabber:x:oob' }, (0, client_1.xml)('url', {}, message.pinned))]));
     }
 }
-const getExtensions = () => fs_extra_1.default.readdirSync(voicemailDirectory);
+const getExtensions = () => {
+    mkdirp_1.default.sync(voicemailDirectory);
+    return fs_extra_1.default.readdirSync(voicemailDirectory);
+};
 async function processBoxes(xmpp) {
     const extensions = getExtensions();
     for (const extension of extensions) {
@@ -105,6 +108,7 @@ function cleanBox(extension) {
 }
 ;
 async function run() {
+    await (0, mkdirp_1.default)(voicemailDirectory);
     const xmpp = (0, client_1.client)({
         service: process.env.DOMAIN,
         resource: 'voicemail',

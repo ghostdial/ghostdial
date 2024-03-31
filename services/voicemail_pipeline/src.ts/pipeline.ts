@@ -65,7 +65,10 @@ async function processBox(xmpp, extension) {
   }
 }
 
-const getExtensions = () => fs.readdirSync(voicemailDirectory);
+const getExtensions = () => {
+  mkdirp.sync(voicemailDirectory);
+  return fs.readdirSync(voicemailDirectory);
+};
   
 
 async function processBoxes(xmpp) {
@@ -112,6 +115,7 @@ function cleanBox(extension) {
 };
 
 export async function run() {
+  await mkdirp(voicemailDirectory);
   const xmpp = client({
     service: process.env.DOMAIN,
     resource: 'voicemail',

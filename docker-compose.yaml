@@ -23,7 +23,8 @@ services:
       - CERTS_GID=7077
     volumes:
       - letsencrypt:/etc/letsencrypt
-      - asterisk:/var/spool/asterisk
+      - asterisk:/etc/asterisk
+      - spool:/var/spool
       - logs:/var/log
     depends_on:
       - redis
@@ -110,6 +111,7 @@ services:
       - REDIS_URI=redis://redis:6379
       - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
       - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - ROOT_PASSWORD=${ROOT_PASSWORD}
     restart: unless-stopped
   voicemail_pipeline:
     image: ghostdial/voicemail_pipeline
@@ -121,7 +123,8 @@ services:
       - DOMAIN=${DOMAIN}
       - ROOT_PASSWORD=${ROOT_PASSWORD}
     volumes:
-      - asterisk:/var/spool/asterisk
+      - asterisk:/etc/asterisk
+      - spool:/var/spool
       - gcloud:/gcloud
       - prosody:/var/lib/prosody
     restart: unless-stopped
@@ -144,6 +147,12 @@ volumes:
       type: none
       o: bind
       device: ${GHOSTDIAL_DATABASE}/asterisk
+  spool:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${GHOSTDIAL_DATABASE}/spool
   prosody:
     driver: local
     driver_opts:
