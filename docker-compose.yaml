@@ -53,7 +53,7 @@ services:
     image: certbot/cerbot
     ports:
       - 50080:50080/tcp
-    command: ["certonly", "--webroot", "--email", "${EMAIL}", "-d", "${DOMAIN}", "--agree-tos", "--no-eff-email": "--http-01-port", "50080", "--webroot-path", "/data/letsencrypt"]
+    command: ["certonly", "--webroot", "--email", "${EMAIL}", "-d", "${DOMAIN}", "--agree-tos", "--no-eff-email", "--http-01-port", "50080", "--webroot-path", "/data/letsencrypt"]
     volumes:
       - letsencrypt:/etc/letsencrypt
     restart: unless-stopped
@@ -125,6 +125,18 @@ volumes:
       type: none
       o: bind
       device: ${GHOSTDIAL_DATABASE}/prosody
+  gcloud:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${GHOSTDIAL_DATABASE}/gcloud
+  sms_pipeline:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${GHOSTDIAL_DATABASE}/sms_pipeline
   logs:
     driver: local
     driver_opts:
