@@ -10,7 +10,7 @@ const path_1 = __importDefault(require("path"));
 const voipms_1 = __importDefault(require("@ghostdial/voipms"));
 const logger_1 = require("./logger");
 const is_dst_1 = __importDefault(require("is-dst"));
-const ioredis_1 = require("ioredis");
+const ioredis_1 = __importDefault(require("ioredis"));
 const SMPP_URL = process.env.SMPP_URL || "ssmpp://smpp.voip.ms:3550";
 const HTTP_FILE_SHARE_BASE_URL = process.env.HTTP_FILE_SHARE_BASE_URL;
 const HTTP_FILE_SHARE_SECRET = process.env.HTTP_FILE_SHARE_SECRET;
@@ -50,7 +50,7 @@ const initializeDatabase = async () => {
 const insertToDatabase = async (sms) => {
     await knex('messages').insert(Object.assign({}, sms, { attachments: JSON.stringify(sms.attachments || []), time: Math.floor(Date.now() / 1000) }));
 };
-const redis = new ioredis_1.Redis(process.env.REDIS_URI || 'redis://localhost:6379');
+const redis = new ioredis_1.default(process.env.REDIS_URI || 'redis://localhost:6379');
 const connect = () => smpp_1.default.connect({ url: SMPP_URL });
 const SMS_OUT_CHANNEL = "sms-out";
 const SMS_IN_CHANNEL = "sms-in";

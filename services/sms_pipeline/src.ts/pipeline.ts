@@ -11,7 +11,7 @@ import path from "path";
 import VoipMs from "@ghostdial/voipms";
 import { logger } from "./logger";
 import isDST from "is-dst";
-import { Redis } from "ioredis";
+import Redis from "ioredis";
 const SMPP_URL = process.env.SMPP_URL || "ssmpp://smpp.voip.ms:3550";
 const HTTP_FILE_SHARE_BASE_URL = process.env.HTTP_FILE_SHARE_BASE_URL;
 const HTTP_FILE_SHARE_SECRET = process.env.HTTP_FILE_SHARE_SECRET;

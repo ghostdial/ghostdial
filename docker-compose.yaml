@@ -5,7 +5,8 @@ services:
     build:
       context: ./services/asterisk
       dockerfile: Dockerfile
-    network_mode: 'host'
+    ports:
+      - 35061:35061/tcp
     environment:
       - ASTERISK_UID=1010
       - ASTERISK_GID=7087
@@ -51,6 +52,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - 5222:5222
+      - 5223:5223
       - 5269:5269
       - 5347:5347
       - 5280:5280
@@ -92,6 +94,8 @@ services:
     environment:
       - VOIPMS_USERNAME=${VOIPMS_API_USERNAME}
       - VOIPMS_PASSWORD=${VOIPMS_API_PASSWORD}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
       - GHOST_NUMBER=8008888080
       - SMS_SQLITE3_DATABASE=/data/sms.db
       - REDIS_URI=redis://redis:6379
@@ -104,6 +108,8 @@ services:
     environment:
       - DOMAIN=${DOMAIN}
       - REDIS_URI=redis://redis:6379
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
     restart: unless-stopped
   voicemail_pipeline:
     image: ghostdial/voicemail_pipeline

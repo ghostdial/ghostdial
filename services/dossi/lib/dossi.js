@@ -14,7 +14,7 @@ const fs_extra_1 = __importDefault(require("fs-extra"));
 const faxvin_puppeteer_1 = require("faxvin-puppeteer");
 const ssh2_1 = require("ssh2");
 const child_process_1 = __importDefault(require("child_process"));
-const ioredis_1 = require("ioredis");
+const ioredis_1 = __importDefault(require("ioredis"));
 const path_1 = __importDefault(require("path"));
 const lodash_1 = __importDefault(require("lodash"));
 const truepeoplesearch_puppeteer_1 = require("truepeoplesearch-puppeteer");
@@ -353,7 +353,7 @@ const deleteNullKeys = (o) => {
     });
     return result;
 };
-const redis = new ioredis_1.Redis(process.env.REDIS_URI || 'redis://127.0.0.1:6379');
+const redis = new ioredis_1.default(process.env.REDIS_URI || 'redis://127.0.0.1:6379');
 const timeout = (n) => new Promise((resolve) => setTimeout(resolve, n));
 const POLL_INTERVAL = 500;
 const toJid = ({ host, username }) => {

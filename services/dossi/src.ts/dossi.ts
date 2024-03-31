@@ -10,7 +10,7 @@ import fs from "fs-extra";
 import { FaxvinPuppeteer } from "faxvin-puppeteer";
 import { Client } from "ssh2";
 import child_process from "child_process";
-import { Redis } from "ioredis";
+import Redis from "ioredis";
 
 import path from "path";
 import { mkdirp } from "mkdirp";
