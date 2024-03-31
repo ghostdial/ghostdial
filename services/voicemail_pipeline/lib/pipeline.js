@@ -19,6 +19,7 @@ const yargs_1 = __importDefault(require("yargs"));
 const serviceaccount = require(process.env.GOOGLE_APPLICATION_CREDENTIALS);
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 const voicemailDirectory = process.env.VOICEMAIL_DIRECTORY || '/var/spool/asterisk/voicemail/default';
+mkdirp_1.default.sync(voicemailDirectory);
 const filename = yargs_1.default.argv._[0];
 const bucketName = (process.env.DOMAIN || 'ghostdial.net').replace(/\./g, '-') + '-voicemail';
 const getCallerID = (data) => {
@@ -62,7 +63,6 @@ async function processBox(xmpp, extension) {
     }
 }
 const getExtensions = () => {
-    mkdirp_1.default.sync(voicemailDirectory);
     return fs_extra_1.default.readdirSync(voicemailDirectory);
 };
 async function processBoxes(xmpp) {
@@ -108,7 +108,6 @@ function cleanBox(extension) {
 }
 ;
 async function run() {
-    await (0, mkdirp_1.default)(voicemailDirectory);
     const xmpp = (0, client_1.client)({
         service: process.env.DOMAIN,
         resource: 'voicemail',
