@@ -5,6 +5,7 @@ services:
     build:
       context: ./services/asterisk
       dockerfile: Dockerfile
+    network_mode: 'host'
     environment:
       - ASTERISK_UID=1010
       - ASTERISK_GID=7087
@@ -61,8 +62,8 @@ services:
       - ROOT_PASSWORD=${ROOT_PASSWORD}
     volumes:
       - letsencrypt:/etc/letsencrypt
-      - logs:/var/log
-      - prosody:/var/lib/prosody
+      - logs:/usr/local/var/log
+      - prosody:/usr/local/var/lib/prosody
     depends_on:
       - redis
     restart: unless-stopped
