@@ -8,12 +8,10 @@ RUN git checkout 20.5.0
 RUN ./configure --without-dahdi --without-pri --without-gtk2 --without-radius --without-x11 --without-speex
 RUN make menuselect.makeopts
 RUN menuselect/menuselect \
-    --disable-category MENUSELECT_ADDONS \
-    --disable-category MENUSELECT_APPS \
         --enable app_authenticate --enable app_cdr --enable app_celgenuserevent \
         --enable app_channelredirect --enable app_chanisavail --enable app_chanspy \
-       --enable app_amd --enable app_mixmonitor \
-       --enable chan_sip --enable res_srtp --enable app_bridgewait --enable app_dial --enable app_playback --enable app_stack --enable app_verbose --enable app_voicemail --enable app_directory --enable app_confbridge --enable app_queue --enable app_playtones --enable app_disa --enable pbx_lua --enable res_srtp
+       --enable app_amd --enable app_mixmonitor --enable pbx_lua --enable res_srtp \
+       --enable chan_sip --enable res_srtp --enable app_bridgewait --enable app_dial --enable app_playback --enable app_stack --enable app_verbose --enable app_voicemail --enable app_directory --enable app_confbridge --enable app_queue --enable app_playtones --enable app_disa --enable pbx_lua
 RUN make install
 COPY ./templates /templates
 COPY ./config /config
