@@ -7,6 +7,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - 35061:35061/tcp
+      - 30000-30099/udp
     environment:
       - ASTERISK_UID=1010
       - ASTERISK_GID=7087
@@ -21,6 +22,7 @@ services:
       - REDIS_URI=redis://redis:6379
       - DOMAIN=${DOMAIN}
       - CERTS_GID=7077
+      - STUN_HOST=${STUN_HOST}
     volumes:
       - letsencrypt:/etc/letsencrypt
       - asterisk:/etc/asterisk

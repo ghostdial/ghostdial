@@ -115,11 +115,11 @@ async function run() {
         password: process.env.ROOT_PASSWORD || 'password'
     });
     (0, debug_1.default)(xmpp, true);
+    logger_1.logger.info('starting xmpp');
     await xmpp.start();
+    logger_1.logger.info('started!');
     while (true) {
         try {
-            logger_1.logger.info('starting xmpp');
-            logger_1.logger.info('started!');
             await processBoxes(xmpp);
         }
         catch (e) {

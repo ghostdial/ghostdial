@@ -122,11 +122,11 @@ export async function run() {
     password: process.env.ROOT_PASSWORD || 'password'
   });
   debug(xmpp, true);
+  logger.info('starting xmpp');
   await xmpp.start();
+  logger.info('started!');
   while (true) {
     try {
-      logger.info('starting xmpp');
-      logger.info('started!');
       await processBoxes(xmpp);
     } catch (e) {
       logger.error(e);

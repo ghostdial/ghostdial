@@ -19,6 +19,15 @@ function write_sip_conf() {
   cat /templates/sip.conf.tpl | envsubst > /etc/asterisk/sip.conf
 }
 
+function write_rtp_conf() {
+  if [ ! -f /etc/asterisk/rtp.conf ]; then
+    cat /templates/rtp.conf.tpl | envsubst > /etc/asterisk/rtp.conf
+  else
+    cat /etc/asterisk/rtp.conf | sed -e "s/stunaddr=.*$/stunaddr=$STUN_HOST/" > /etc/asterisk/rtp.conf.2
+    mv /etc/asterisk/rtp.conf.2 /etc/asterisk/rtp.conf
+  fi
+}
+
 function add_certs_group() {
   groupadd -g ${CERTS_GID} letsencrypt -f 2> /dev/null
   adduser asterisk letsencrypt 2> /dev/null
@@ -46,6 +55,7 @@ function init_asterisk() {
   if [[ ! -f /etc/asterisk/sip.conf ]]; then
     write_sip_conf
   fi
+  write_rtp_conf
   include_conf
   if [[ ! -f /etc/asterisk/extensions.lua ]]; then
     cp /config/extensions.lua /etc/asterisk/extensions.lua
