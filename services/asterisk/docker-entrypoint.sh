@@ -15,8 +15,13 @@ else
 fi
 
 function write_sip_conf() {
-  export IPV4_ADDRESS=$(ip -4 addr show eth0 | grep --color=never -oP '(?<=inet\s)\d+(\.\d+){3}')
-  cat /templates/sip.conf.tpl | envsubst > /etc/asterisk/sip.conf
+  export IPV4_ADDRESS=$(ip route show | grep -oP '(\d+\.\d+\.\d+\.\d+\/\d+)')
+  if [ ! -f /etc/asterisk/sip.conf ]; then
+    cat /templates/sip.conf.tpl | envsubst > /etc/asterisk/sip.conf
+  else
+    sed -i "s/externip=.*$/externip=$EXTERNIP/" /etc/asterisk/sip.conf
+    sed -i "s/localnet=.*$/localnet=$IPV4_ADDRESS/" /etc/asterisk/sip.conf
+  fi
 }
 
 function write_rtp_conf() {
@@ -52,9 +57,7 @@ function echo_env() {
 function init_asterisk() {
   echo_env
   echo "INITIALIZING GHOSTDIAL/ASTERISK..."
-  if [[ ! -f /etc/asterisk/sip.conf ]]; then
-    write_sip_conf
-  fi
+  write_sip_conf
   write_rtp_conf
   include_conf
   if [[ ! -f /etc/asterisk/extensions.lua ]]; then

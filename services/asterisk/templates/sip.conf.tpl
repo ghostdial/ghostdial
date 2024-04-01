@@ -1,7 +1,7 @@
 [general]
 externip=$EXTERNIP
 nat=force_rport,comedia
-localnet=$IPV4_ADDRESS/255.255.255.0
+localnet=$IPV4_ADDRESS
 tlsdontverifyserver=yes
 register => $VOIPMS_SIP_PROTOCOL://$VOIPMS_SIP_USERNAME:$VOIPMS_SIP_PASSWORD@$VOIPMS_SIP_HOST:$VOIPMS_SIP_PORT
 transport=tls

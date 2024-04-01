@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - 35061:35061/tcp
-      - 30000-30099/udp
+      - 30000-30099:30000-30099/udp
     environment:
       - ASTERISK_UID=1010
       - ASTERISK_GID=7087
