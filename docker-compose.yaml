@@ -104,7 +104,7 @@ services:
       - REDIS_URI=redis://redis:6379
     restart: unless-stopped
   dossi:
-    image: ghostdial/sms_pipeline
+    image: ghostdial/dossi
     build:
       context: ./
       dockerfile: Dockerfile-dossi
